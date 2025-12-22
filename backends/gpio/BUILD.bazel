@@ -4,6 +4,7 @@ cc_library(
     name = "particle_gpio",
     srcs = ["particle_digital_io.cc"],
     hdrs = ["particle_digital_io.h"],
+    includes = ["."],
     deps = [
         "//particle:device_os_headers",
         "@pigweed//pw_assert:check",

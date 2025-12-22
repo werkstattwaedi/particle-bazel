@@ -8,6 +8,7 @@ cc_library(
     name = "log_bridge",
     srcs = ["log_bridge.cc"],
     hdrs = ["log_bridge.h"],
+    includes = ["."],
     deps = [
         "//particle:device_os_headers",
         "//particle:services_dynalib",
