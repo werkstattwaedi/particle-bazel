@@ -1,7 +1,7 @@
 // Copyright 2024. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "lib/particle_gpio/particle_digital_io.h"
+#include "particle_digital_io.h"
 
 #include "gpio_hal.h"
 #include "pw_assert/check.h"

@@ -7,7 +7,7 @@
 // Thread safety is handled by pw_sys_io - each PW_LOG call uses WriteLine
 // which is atomic.
 
-#include "lib/particle_log/log_bridge.h"
+#include "log_bridge.h"
 
 #include <cstddef>
 
