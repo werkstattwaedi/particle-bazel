@@ -228,5 +228,5 @@ This configures:
 
 ## License
 
-- particle-bazel: Apache-2.0
+- particle-bazel: MIT
 - Device OS: LGPL v3
