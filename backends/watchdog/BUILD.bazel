@@ -11,7 +11,7 @@ cc_library(
     includes = ["public"],
     deps = [
         "//backends/chrono:system_clock",
-        "//particle:hal_dynalib",
+        "//:hal_dynalib",
         "@pigweed//pw_chrono:system_clock",
         "@pigweed//pw_status",
     ],

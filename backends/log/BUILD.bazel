@@ -10,8 +10,8 @@ cc_library(
     hdrs = ["public/pb_log/log_bridge.h"],
     includes = ["public"],
     deps = [
-        "//particle:device_os_headers",
-        "//particle:services_dynalib",
+        "//:device_os_headers",
+        "//:services_dynalib",
         "@pigweed//pw_log",
         "@pigweed//pw_sys_io",
     ],

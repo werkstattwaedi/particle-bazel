@@ -16,8 +16,8 @@ cc_library(
         "public_overrides",
     ],
     deps = [
-        "//particle:device_os_headers",
-        "//particle:hal_dynalib",
+        "//:device_os_headers",
+        "//:hal_dynalib",
         "@pigweed//pw_chrono:epoch",
         "@pigweed//pw_chrono:system_clock.facade",
     ],

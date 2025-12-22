@@ -1,0 +1,13 @@
+# pw_assert backend for Particle firmware
+# Provides minimal assert handler that triggers debugger breakpoint
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "assert_backend",
+    srcs = ["assert_backend.cc"],
+    alwayslink = True,
+    target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
+)

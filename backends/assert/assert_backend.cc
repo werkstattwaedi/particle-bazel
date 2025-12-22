@@ -1,5 +1,8 @@
-// Minimal pw_assert stub for Particle P2 firmware
-// This provides assert handler functions without depending on pw_sys_io.
+// Copyright 2024 Werkstatt Waedi
+// SPDX-License-Identifier: Apache-2.0
+//
+// Minimal pw_assert backend for Particle P2 firmware.
+// Provides assert handler functions without depending on pw_sys_io.
 
 #include <cstdlib>
 

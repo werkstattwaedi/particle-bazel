@@ -43,13 +43,13 @@ PARTICLE_BASE_LINKOPTS = [
     "--specs=nano.specs",
     "--specs=nosys.specs",
     # Linker scripts and library paths
-    "-Texternal/particle_bazel+/particle/device-os/modules/tron/user-part/linker.ld",
-    "-Lexternal/particle_bazel+/particle/rules",  # For memory_platform_user.ld defaults
-    "-Lexternal/particle_bazel+/particle/device-os/modules/tron/user-part",
-    "-Lexternal/particle_bazel+/particle/device-os/modules/tron/system-part1",
-    "-Lexternal/particle_bazel+/particle/device-os/modules/shared/rtl872x",
-    "-Lexternal/particle_bazel+/particle/device-os/build/arm/linker",
-    "-Lexternal/particle_bazel+/particle/device-os/build/arm/linker/rtl872x",
+    "-Texternal/particle_bazel+/third_party/device-os/modules/tron/user-part/linker.ld",
+    "-Lexternal/particle_bazel+/rules",  # For memory_platform_user.ld defaults
+    "-Lexternal/particle_bazel+/third_party/device-os/modules/tron/user-part",
+    "-Lexternal/particle_bazel+/third_party/device-os/modules/tron/system-part1",
+    "-Lexternal/particle_bazel+/third_party/device-os/modules/shared/rtl872x",
+    "-Lexternal/particle_bazel+/third_party/device-os/build/arm/linker",
+    "-Lexternal/particle_bazel+/third_party/device-os/build/arm/linker/rtl872x",
     "-Wl,--defsym,__STACKSIZE__=8192",
     "-Wl,--defsym,__STACK_SIZE=8192",
     # Force linker to include user entry points
@@ -192,7 +192,7 @@ _particle_two_pass_binary = rule(
         "deps": attr.label_list(providers = [CcInfo]),
         "linkopts": attr.string_list(default = []),
         "_linker_scripts": attr.label(
-            default = "@particle_bazel//particle:linker_scripts",
+            default = "@particle_bazel//:linker_scripts",
         ),
         "_extract_sizes": attr.label(
             default = "@particle_bazel//tools:extract_elf_sizes.py",
@@ -240,7 +240,7 @@ def particle_cc_binary(
         name = lib_name,
         srcs = srcs,
         deps = deps + [
-            "@particle_bazel//particle:device_os_user_part",
+            "@particle_bazel//:device_os_user_part",
             "@pigweed//pw_assert_basic",
         ],
         copts = PARTICLE_COPTS + copts,
@@ -261,13 +261,13 @@ def particle_cc_binary(
     else:
         # Fallback: single-pass linking with static defaults
         particle_linkopts = PARTICLE_BASE_LINKOPTS + [
-            "-Lexternal/particle_bazel+/particle/rules",  # For memory_platform_user.ld
+            "-Lexternal/particle_bazel+/rules",  # For memory_platform_user.ld
         ]
         cc_binary(
             name = name,
             deps = [":" + lib_name],
             additional_linker_inputs = [
-                "@particle_bazel//particle:linker_scripts",
+                "@particle_bazel//:linker_scripts",
             ],
             linkopts = particle_linkopts + linkopts,
             target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
@@ -321,7 +321,7 @@ def particle_flash_binary(
     """
     native.sh_binary(
         name = name,
-        srcs = ["@particle_bazel//particle/rules:flash.sh"],
+        srcs = ["@particle_bazel//rules:flash.sh"],
         data = [firmware],
         args = ["$(location " + firmware + ")"],
         tags = ["local"],  # Bypass sandbox to access particle credentials

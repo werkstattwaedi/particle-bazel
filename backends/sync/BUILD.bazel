@@ -17,8 +17,8 @@ cc_library(
         "public_overrides",
     ],
     deps = [
-        "//particle:device_os_headers",
-        "//particle:hal_dynalib",
+        "//:device_os_headers",
+        "//:hal_dynalib",
         "@pigweed//pw_assert:assert",
         "@pigweed//pw_sync:mutex.facade",
     ],
