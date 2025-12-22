@@ -5,10 +5,10 @@
 
 #pragma once
 
-namespace particle_log {
+namespace pb::log {
 
 // Initialize the log bridge. Call this early in setup() to intercept
 // all Device OS system logs and route them through pw_log.
 void InitLogBridge();
 
-}  // namespace particle_log
+}  // namespace pb::log

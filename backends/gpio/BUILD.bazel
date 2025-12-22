@@ -1,10 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "particle_gpio",
-    srcs = ["particle_digital_io.cc"],
-    hdrs = ["particle_digital_io.h"],
-    includes = ["."],
+    name = "digital_io",
+    srcs = ["digital_io.cc"],
+    hdrs = ["public/pb_digital_io/digital_io.h"],
+    includes = ["public"],
     deps = [
         "//particle:device_os_headers",
         "@pigweed//pw_assert:check",

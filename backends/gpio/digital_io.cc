@@ -1,12 +1,12 @@
 // Copyright 2024. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "particle_digital_io.h"
+#include "pb_digital_io/digital_io.h"
 
 #include "gpio_hal.h"
 #include "pw_assert/check.h"
 
-namespace particle {
+namespace pb {
 
 using ::pw::digital_io::State;
 
@@ -51,4 +51,4 @@ pw::Status ParticleDigitalOut::DoSetState(State state) {
   return pw::OkStatus();
 }
 
-}  // namespace particle
+}  // namespace pb

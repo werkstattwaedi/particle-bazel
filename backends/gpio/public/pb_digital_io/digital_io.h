@@ -12,7 +12,7 @@
 // Forward declarations for Particle types (avoid including full headers)
 typedef uint16_t hal_pin_t;
 
-namespace particle {
+namespace pb {
 
 // Pigweed DigitalIn backend for Particle using Arduino Wiring API.
 // Wraps pinMode() and digitalRead().
@@ -51,4 +51,4 @@ class ParticleDigitalOut : public pw::digital_io::DigitalOut {
   bool enabled_ = false;
 };
 
-}  // namespace particle
+}  // namespace pb

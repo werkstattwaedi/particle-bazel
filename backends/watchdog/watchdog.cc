@@ -1,11 +1,11 @@
 // Copyright 2024 Werkstatt Waedi
 // SPDX-License-Identifier: Apache-2.0
 
-#include "particle_watchdog/watchdog.h"
+#include "pb_watchdog/watchdog.h"
 
 #include "watchdog_hal.h"
 
-namespace particle {
+namespace pb::watchdog {
 
 Watchdog::~Watchdog() {
   if (enabled_) {
@@ -79,4 +79,4 @@ pw::Status Watchdog::SetExpiredCallback(ExpiredCallback callback, void* context)
   return pw::OkStatus();
 }
 
-}  // namespace particle
+}  // namespace pb::watchdog

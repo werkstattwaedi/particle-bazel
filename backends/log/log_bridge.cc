@@ -7,7 +7,7 @@
 // Thread safety is handled by pw_sys_io - each PW_LOG call uses WriteLine
 // which is atomic.
 
-#include "log_bridge.h"
+#include "pb_log/log_bridge.h"
 
 #include <cstddef>
 
@@ -15,7 +15,7 @@
 #include "pw_log/log.h"
 #include "pw_sys_io/sys_io.h"
 
-namespace particle_log {
+namespace pb::log {
 namespace {
 
 // Map Particle log levels to appropriate PW_LOG calls
@@ -69,4 +69,4 @@ void InitLogBridge() {
                     nullptr);
 }
 
-}  // namespace particle_log
+}  // namespace pb::log

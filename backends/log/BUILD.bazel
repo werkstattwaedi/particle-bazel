@@ -7,8 +7,8 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "log_bridge",
     srcs = ["log_bridge.cc"],
-    hdrs = ["log_bridge.h"],
-    includes = ["."],
+    hdrs = ["public/pb_log/log_bridge.h"],
+    includes = ["public"],
     deps = [
         "//particle:device_os_headers",
         "//particle:services_dynalib",

@@ -10,7 +10,7 @@
 #include "pw_chrono/system_clock.h"
 #include "pw_status/status.h"
 
-namespace particle {
+namespace pb::watchdog {
 
 // Watchdog timer wrapper using Device OS HAL
 //
@@ -64,4 +64,4 @@ class Watchdog {
   uint32_t timeout_ms_ = 0;
 };
 
-}  // namespace particle
+}  // namespace pb::watchdog

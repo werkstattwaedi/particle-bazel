@@ -7,7 +7,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "watchdog",
     srcs = ["watchdog.cc"],
-    hdrs = ["public/particle_watchdog/watchdog.h"],
+    hdrs = ["public/pb_watchdog/watchdog.h"],
     includes = ["public"],
     deps = [
         "//backends/chrono:system_clock",
