@@ -118,7 +118,6 @@ bazel run --config=p2 //path/to:flash
 | `:hal_dynalib` | HAL dynamic library exports |
 | `:services_dynalib` | Services dynamic library exports |
 | `:linker_scripts` | Linker scripts for firmware |
-| `:wiring` | Arduino-compatible Wiring library |
 
 ### Pigweed Backends (`pw_*_particle/`)
 
@@ -152,6 +151,27 @@ pb::ParticleDigitalIn button(D0, pb::ParticleDigitalIn::Mode::kInputPulldown);
 pb::log::InitLogBridge();
 pb::watchdog::Watchdog wdt;
 ```
+
+## Why No Wiring/Arduino API?
+
+The Wiring/Arduino API (e.g., `pinMode()`, `digitalWrite()`, `String`) is **intentionally not exposed**. Use Pigweed (`pw_*`) and particle-bazel (`pb_*`) abstractions instead.
+
+**Reasons:**
+
+- **Testability**: Pigweed facades can be mocked for unit testing; Wiring cannot
+- **Type safety**: Standard C++ types (`std::string_view`, `pw::span`) vs. custom `String` class
+- **Error handling**: Consistent `pw::Status` returns vs. silent failures
+- **Separation of concerns**: Clear interfaces between hardware and application logic
+
+**Migration examples:**
+
+| Wiring | particle-bazel |
+|--------|----------------|
+| `pinMode(D7, OUTPUT)` | `pb::ParticleDigitalOut led(D7)` |
+| `digitalWrite(D7, HIGH)` | `led.SetState(pw::digital_io::State::kActive)` |
+| `digitalRead(D0)` | `button.GetState()` |
+| `delay(1000)` | `pw::this_thread::sleep_for(1000ms)` |
+| `millis()` | `pw::chrono::SystemClock::now()` |
 
 ## Build Rules
 

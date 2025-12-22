@@ -170,16 +170,20 @@ cc_library(
 )
 
 # =============================================================================
-# Wiring Libraries
+# Wiring Libraries (Private - Not Supported)
 # =============================================================================
+# The Wiring/Arduino API is intentionally not exposed. Use Pigweed (pw_*) and
+# particle-bazel (pb_*) abstractions instead, which provide:
+# - Testable, well-designed APIs
+# - Standard C++ types (no custom String class)
+# - Consistent error handling via pw::Status
+# - Better separation of concerns
 
-# Wiring library - Arduino-compatible API (50 files)
 cc_library(
     name = "wiring",
     srcs = glob(
         ["third_party/device-os/wiring/src/*.cpp"],
         exclude = [
-            # Exclude files that use std::mutex/threading until we have proper gthread support
             "third_party/device-os/wiring/src/spark_wiring_thread.cpp",
             "third_party/device-os/wiring/src/spark_wiring_watchdog.cpp",
         ],
@@ -192,22 +196,22 @@ cc_library(
     ],
     deps = [":device_os_headers"],
     alwayslink = True,
+    visibility = ["//visibility:private"],
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
 )
 
-# Wiring globals - global instances (8 files)
 cc_library(
     name = "wiring_globals",
     srcs = glob(
         ["third_party/device-os/wiring_globals/src/*.cpp"],
         exclude = [
-            # Exclude files that include spark_wiring_thread.h (uses std::mutex)
             "third_party/device-os/wiring_globals/src/spark_wiring_watchdog.cpp",
         ],
     ),
     copts = DEVICE_OS_CXXOPTS,
     deps = [":device_os_headers", ":wiring"],
     alwayslink = True,
+    visibility = ["//visibility:private"],
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
 )
 
