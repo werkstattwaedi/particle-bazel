@@ -10,7 +10,7 @@ cc_library(
     hdrs = ["public/pb_watchdog/watchdog.h"],
     includes = ["public"],
     deps = [
-        "//backends/chrono:system_clock",
+        "//pw_chrono_particle:system_clock",
         "//:hal_dynalib",
         "@pigweed//pw_chrono:system_clock",
         "@pigweed//pw_status",

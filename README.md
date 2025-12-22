@@ -12,24 +12,23 @@ This module provides:
 
 ```
 particle-bazel/
-├── BUILD.bazel          # Device OS targets (headers, dynalibs, user-part glue)
-├── MODULE.bazel         # Bazel module definition
-├── backends/            # Pigweed backend implementations
-│   ├── assert/          # pw_assert backend (breakpoint on failure)
-│   ├── chrono/          # pw_chrono backend (HAL timer)
-│   ├── gpio/            # pw_digital_io wrapper (pb::ParticleDigitalIn/Out)
-│   ├── log/             # Log bridge (Device OS -> pw_log)
-│   ├── sync/            # pw_sync backend (HAL mutex)
-│   ├── sys_io/          # pw_sys_io backend (USB serial)
-│   ├── thread/          # pw_thread backends (id, yield, sleep)
-│   └── watchdog/        # Watchdog wrapper (pb::watchdog::Watchdog)
-├── rules/               # Bazel build rules
+├── BUILD.bazel              # Device OS targets (headers, dynalibs, user-part glue)
+├── MODULE.bazel             # Bazel module definition
+├── pw_assert_particle/      # pw_assert backend (breakpoint on failure)
+├── pw_chrono_particle/      # pw_chrono backend (HAL timer)
+├── pw_digital_io_particle/  # pw_digital_io wrapper (pb::ParticleDigitalIn/Out)
+├── pw_sync_particle/        # pw_sync backend (HAL mutex)
+├── pw_sys_io_particle/      # pw_sys_io backend (USB serial)
+├── pw_thread_particle/      # pw_thread backends (id, yield, sleep)
+├── pb_log/                  # Log bridge (Device OS -> pw_log)
+├── pb_watchdog/             # Watchdog wrapper (pb::watchdog::Watchdog)
+├── rules/                   # Bazel build rules
 │   └── particle_firmware.bzl
 ├── third_party/
-│   └── device-os/       # Particle Device OS submodule
-├── platforms/           # Platform definitions
-├── toolchain/           # ARM toolchain configuration
-└── tools/               # Utility scripts (CRC patching, size extraction)
+│   └── device-os/           # Particle Device OS submodule
+├── platforms/               # Platform definitions
+├── toolchain/               # ARM toolchain configuration
+└── tools/                   # Utility scripts (CRC patching, size extraction)
 ```
 
 ## Usage
@@ -75,8 +74,8 @@ cc_library(
     srcs = ["main.cc"],
     deps = [
         "@particle_bazel//:device_os_headers",
-        "@particle_bazel//backends/gpio:digital_io",
-        "@particle_bazel//backends/log:log_bridge",
+        "@particle_bazel//pw_digital_io_particle:digital_io",
+        "@particle_bazel//pb_log:log_bridge",
         "@pigweed//pw_log",
     ],
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
@@ -121,22 +120,25 @@ bazel run --config=p2 //path/to:flash
 | `:linker_scripts` | Linker scripts for firmware |
 | `:wiring` | Arduino-compatible Wiring library |
 
-### Pigweed Backends (`@particle_bazel//backends/`)
+### Pigweed Backends (`pw_*_particle/`)
 
 | Target | Pigweed Facade | Description |
 |--------|----------------|-------------|
-| `assert:assert_backend` | `pw_assert` | Triggers debugger breakpoint on assert |
-| `chrono:system_clock` | `pw_chrono` | System clock using HAL timer |
-| `gpio:digital_io` | `pw_digital_io` | GPIO wrapper classes |
-| `log:log_bridge` | - | Bridges Device OS logs to pw_log |
-| `sync:mutex` | `pw_sync` | Mutex using HAL concurrency |
-| `sys_io:sys_io` | `pw_sys_io` | USB serial I/O |
-| `thread:id` | `pw_thread` | Thread ID |
-| `thread:yield` | `pw_thread` | Thread yield |
-| `thread:sleep` | `pw_thread` | Thread sleep |
-| `watchdog:watchdog` | - | Hardware watchdog wrapper |
+| `pw_assert_particle:assert_backend` | `pw_assert` | Triggers debugger breakpoint on assert |
+| `pw_chrono_particle:system_clock` | `pw_chrono` | System clock using HAL timer |
+| `pw_digital_io_particle:digital_io` | `pw_digital_io` | GPIO wrapper classes |
+| `pw_sync_particle:mutex` | `pw_sync` | Mutex using HAL concurrency |
+| `pw_sys_io_particle:sys_io` | `pw_sys_io` | USB serial I/O |
+| `pw_thread_particle:id` | `pw_thread` | Thread ID |
+| `pw_thread_particle:yield` | `pw_thread` | Thread yield |
+| `pw_thread_particle:sleep` | `pw_thread` | Thread sleep |
 
-### Particle-Bazel Utilities
+### Particle-Bazel Utilities (`pb_*/`)
+
+| Target | Description |
+|--------|-------------|
+| `pb_log:log_bridge` | Bridges Device OS logs to pw_log |
+| `pb_watchdog:watchdog` | Hardware watchdog wrapper |
 
 These use the `pb::` namespace:
 

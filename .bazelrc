@@ -37,18 +37,18 @@ build:p2 --@pigweed//pw_toolchain/cc:cxx_standard=17
 build:p2 --@pigweed//pw_assert:check_backend=@pigweed//pw_assert_basic
 build:p2 --@pigweed//pw_assert:assert_backend=@pigweed//pw_assert_basic
 build:p2 --@pigweed//pw_log:backend=@pigweed//pw_log_basic
-build:p2 --@pigweed//pw_sys_io:backend=@particle_bazel//backends/sys_io:sys_io
+build:p2 --@pigweed//pw_sys_io:backend=@particle_bazel//pw_sys_io_particle:sys_io
 
 # Chrono backend using Particle HAL timer
-build:p2 --@pigweed//pw_chrono:system_clock_backend=@particle_bazel//backends/chrono:system_clock
+build:p2 --@pigweed//pw_chrono:system_clock_backend=@particle_bazel//pw_chrono_particle:system_clock
 
 # Sync backend using Particle HAL concurrent functions
-build:p2 --@pigweed//pw_sync:mutex_backend=@particle_bazel//backends/sync:mutex
+build:p2 --@pigweed//pw_sync:mutex_backend=@particle_bazel//pw_sync_particle:mutex
 
 # Thread backends using Particle HAL concurrent functions
-build:p2 --@pigweed//pw_thread:id_backend=@particle_bazel//backends/thread:id
-build:p2 --@pigweed//pw_thread:yield_backend=@particle_bazel//backends/thread:yield
-build:p2 --@pigweed//pw_thread:sleep_backend=@particle_bazel//backends/thread:sleep
+build:p2 --@pigweed//pw_thread:id_backend=@particle_bazel//pw_thread_particle:id
+build:p2 --@pigweed//pw_thread:yield_backend=@particle_bazel//pw_thread_particle:yield
+build:p2 --@pigweed//pw_thread:sleep_backend=@particle_bazel//pw_thread_particle:sleep
 build:p2 --@pigweed//pw_thread:thread_backend=@pigweed//pw_thread:generic_thread_creation_unsupported
 
 # Host build for tests (uses default host platform)
