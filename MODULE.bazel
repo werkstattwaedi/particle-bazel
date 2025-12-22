@@ -1,0 +1,26 @@
+module(
+    name = "particle_bazel",
+    version = "0.1.0",
+)
+
+# Pigweed - via local submodule in the consuming project
+# The consuming project should set up pigweed via local_path_override
+bazel_dep(name = "pigweed")
+
+# Standard dependencies
+bazel_dep(name = "platforms", version = "0.0.10")
+bazel_dep(name = "rules_cc", version = "0.1.1")
+
+# Use ARM GCC 10.2.1 toolchain (matching Particle's toolchain version)
+arm_toolchain = use_extension("//toolchain:extensions.bzl", "arm_toolchain")
+use_repo(arm_toolchain, "gcc_arm_none_eabi_toolchain")
+
+# Register Pigweed's ARM GCC toolchain for Cortex-M33
+register_toolchains(
+    "@pigweed//pw_toolchain/arm_gcc:arm_gcc_cc_toolchain_cortex-m33",
+)
+
+# Register host toolchain for tests
+register_toolchains(
+    "@pigweed//pw_toolchain/host_clang:host_cc_toolchain_linux",
+)

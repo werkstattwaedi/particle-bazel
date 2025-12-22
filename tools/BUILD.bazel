@@ -1,0 +1,13 @@
+# Tools for Particle firmware development
+
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "particle_crc",
+    srcs = ["particle_crc.py"],
+)
+
+py_binary(
+    name = "extract_elf_sizes",
+    srcs = ["extract_elf_sizes.py"],
+)

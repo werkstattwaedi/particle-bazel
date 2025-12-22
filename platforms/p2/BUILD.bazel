@@ -1,0 +1,21 @@
+# Platform definitions for Particle P2 firmware
+
+package(default_visibility = ["//visibility:public"])
+
+# Particle P2 platform (RTL8721DM / Cortex-M33)
+platform(
+    name = "particle_p2",
+    constraint_values = [
+        "@platforms//os:none",  # Bare metal
+        "@platforms//cpu:armv8-m",  # Cortex-M33 is ARMv8-M
+        "@pigweed//pw_build/constraints/arm:cortex-m33",
+    ],
+)
+
+# Config setting to detect P2 builds
+config_setting(
+    name = "is_particle_p2",
+    constraint_values = [
+        "@pigweed//pw_build/constraints/arm:cortex-m33",
+    ],
+)

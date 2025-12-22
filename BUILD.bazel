@@ -1,0 +1,4 @@
+# Particle Bazel - Root BUILD file
+# This module provides Bazel infrastructure for Particle firmware development with Pigweed
+
+package(default_visibility = ["//visibility:public"])

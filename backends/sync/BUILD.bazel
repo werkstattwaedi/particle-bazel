@@ -1,0 +1,26 @@
+# pw_sync backend for Particle Device OS
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "mutex",
+    hdrs = [
+        "public/pw_sync_particle/mutex_inline.h",
+        "public/pw_sync_particle/mutex_native.h",
+        "public_overrides/pw_sync_backend/mutex_inline.h",
+        "public_overrides/pw_sync_backend/mutex_native.h",
+    ],
+    includes = [
+        "public",
+        "public_overrides",
+    ],
+    deps = [
+        "//particle:device_os_headers",
+        "//particle:hal_dynalib",
+        "@pigweed//pw_assert:assert",
+        "@pigweed//pw_sync:mutex.facade",
+    ],
+    target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
+)

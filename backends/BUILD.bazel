@@ -1,0 +1,4 @@
+# Pigweed HAL backends for Particle Device OS
+# Each subdirectory contains a specific backend implementation
+
+package(default_visibility = ["//visibility:public"])

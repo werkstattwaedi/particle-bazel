@@ -1,0 +1,61 @@
+# Particle Bazel - Common Configuration
+# ======================================
+# Import this file in your project's .bazelrc:
+#   import %workspace%/particle/.bazelrc
+
+# Required Pigweed flags (from setup guide)
+common --incompatible_default_to_explicit_init_py
+common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+common --experimental_exclude_defines_from_exec_config
+common --experimental_exclude_starlark_flags_from_exec_config
+build --incompatible_strict_action_env
+common --legacy_external_runfiles=True
+common --incompatible_bazel_test_exec_run_under=True
+common --experimental_platform_in_output_dir=True
+
+# UX improvements
+common --verbose_failures
+build --ui_event_filters=-debug
+test --test_output=errors
+
+# C++ improvements
+common --strip=never
+common --per_file_copt=external/.*,.*\.pb\.cc@-w
+common --host_per_file_copt=external/.*,.*\.pb\.cc@-w
+
+# ============================================
+# Platform configurations
+# ============================================
+
+# Particle P2 firmware build (Cortex-M33)
+build:p2 --platforms=@particle_bazel//platforms/p2:particle_p2
+
+# Use C++17 to match Particle Device OS requirements
+build:p2 --@pigweed//pw_toolchain/cc:cxx_standard=17
+
+# Pigweed backends for embedded target
+build:p2 --@pigweed//pw_assert:check_backend=@pigweed//pw_assert_basic
+build:p2 --@pigweed//pw_assert:assert_backend=@pigweed//pw_assert_basic
+build:p2 --@pigweed//pw_log:backend=@pigweed//pw_log_basic
+build:p2 --@pigweed//pw_sys_io:backend=@particle_bazel//backends/sys_io:sys_io
+
+# Chrono backend using Particle HAL timer
+build:p2 --@pigweed//pw_chrono:system_clock_backend=@particle_bazel//backends/chrono:system_clock
+
+# Sync backend using Particle HAL concurrent functions
+build:p2 --@pigweed//pw_sync:mutex_backend=@particle_bazel//backends/sync:mutex
+
+# Thread backends using Particle HAL concurrent functions
+build:p2 --@pigweed//pw_thread:id_backend=@particle_bazel//backends/thread:id
+build:p2 --@pigweed//pw_thread:yield_backend=@particle_bazel//backends/thread:yield
+build:p2 --@pigweed//pw_thread:sleep_backend=@particle_bazel//backends/thread:sleep
+build:p2 --@pigweed//pw_thread:thread_backend=@pigweed//pw_thread:generic_thread_creation_unsupported
+
+# Host build for tests (uses default host platform)
+# No --platforms needed for host builds
+
+# ============================================
+# Output settings
+# ============================================
+build --show_timestamps
+build --color=yes
