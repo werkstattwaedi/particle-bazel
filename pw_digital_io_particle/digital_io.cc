@@ -1,4 +1,4 @@
-// Copyright 2024. All rights reserved.
+// Copyright Offene Werkstatt Wädenswil
 // SPDX-License-Identifier: MIT
 
 #include "pb_digital_io/digital_io.h"

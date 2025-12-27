@@ -1,4 +1,4 @@
-// Copyright 2024. All rights reserved.
+// Copyright Offene Werkstatt Wädenswil
 // SPDX-License-Identifier: MIT
 
 #include "pw_thread/thread.h"
