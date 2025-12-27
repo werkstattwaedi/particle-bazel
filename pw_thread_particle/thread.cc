@@ -49,8 +49,11 @@ void Context::CreateThread(const particle::Options& options,
                            Context*& native_type_out) {
   os_thread_t thread_handle = nullptr;
 
+  // Always use dynamic allocation and os_thread_create.
+  // Note: os_thread_create_with_stack is not available in dynalib.
+  // Static contexts are stored but we still use os_thread_create for the stack.
   if (options.static_context() != nullptr) {
-    // Use the statically allocated context.
+    // Use the statically allocated context for the Context object.
     native_type_out = options.static_context();
     PW_DCHECK(native_type_out->thread_handle() == nullptr,
               "Cannot reuse a context that is still in use");
@@ -61,18 +64,6 @@ void Context::CreateThread(const particle::Options& options,
     native_type_out->dynamically_allocated_ = false;
 
     native_type_out->set_thread_routine(std::move(thread_fn));
-
-    // Create thread with pre-allocated stack.
-    const os_result_t result = os_thread_create_with_stack(
-        &thread_handle,
-        options.name(),
-        options.priority(),
-        Context::ThreadEntryPoint,
-        native_type_out,
-        native_type_out->stack_size_,
-        native_type_out->stack_storage_);
-
-    PW_CHECK(result == 0, "Failed to create thread");
   } else {
     // Dynamically allocate the context.
     native_type_out = new pw::thread::particle::Context();
@@ -81,19 +72,19 @@ void Context::CreateThread(const particle::Options& options,
     native_type_out->set_thread_done(false);
 
     native_type_out->set_thread_routine(std::move(thread_fn));
-
-    // Create thread with dynamically allocated stack.
-    const os_result_t result = os_thread_create(
-        &thread_handle,
-        options.name(),
-        options.priority(),
-        Context::ThreadEntryPoint,
-        native_type_out,
-        options.stack_size_bytes());
-
-    PW_CHECK(result == 0, "Failed to create thread");
   }
 
+  // Create thread with dynamically allocated stack (os_thread_create).
+  // The stack_size from options is used regardless of static/dynamic context.
+  const os_result_t result = os_thread_create(
+      &thread_handle,
+      options.name(),
+      options.priority(),
+      Context::ThreadEntryPoint,
+      native_type_out,
+      options.stack_size_bytes());
+
+  PW_CHECK(result == 0, "Failed to create thread");
   PW_CHECK(thread_handle != nullptr, "Thread handle is null after creation");
   native_type_out->set_thread_handle(thread_handle);
 }

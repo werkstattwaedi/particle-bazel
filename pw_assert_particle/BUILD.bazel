@@ -1,13 +1,18 @@
-# pw_assert backend for Particle firmware
-# Provides minimal assert handler that triggers debugger breakpoint
+# pw_assert handler for Particle firmware
+# Provides a simple handler that triggers a breakpoint on assertion failure.
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
+# The handler that gets called on assertion failure
+# Implements pw_assert_basic_HandleFailure by triggering a breakpoint
 cc_library(
-    name = "assert_backend",
-    srcs = ["assert_backend.cc"],
+    name = "handler",
+    srcs = ["handler.cc"],
+    deps = [
+        "@pigweed//pw_assert_basic:handler.facade",
+    ],
     alwayslink = True,
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
 )

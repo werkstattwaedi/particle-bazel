@@ -68,13 +68,29 @@ PARTICLE_BASE_LINKOPTS = [
     "-lstdc++",
 ]
 
+# Platform transition for building under a specific platform
+def _particle_platform_transition_impl(settings, attr):
+    """Transition to build deps under the specified platform."""
+    if hasattr(attr, "platform") and attr.platform:
+        return {"//command_line_option:platforms": str(attr.platform)}
+    return {}
+
+_particle_platform_transition = transition(
+    implementation = _particle_platform_transition_impl,
+    inputs = [],
+    outputs = ["//command_line_option:platforms"],
+)
+
 def _particle_two_pass_binary_impl(ctx):
     """Implementation of two-pass linking for Particle firmware.
 
     Pass 1: Link with conservative defaults to create intermediate ELF
     Pass 2: Extract sizes, generate precise linker script, re-link final ELF
     """
-    cc_toolchain = find_cpp_toolchain(ctx)
+    # Get toolchain from the transitioned _cc_toolchain attribute
+    # This resolves the toolchain in the target (ARM) configuration, not exec (host)
+    # With transitions, the attribute returns a list - get the first (and only) element
+    cc_toolchain = ctx.attr._cc_toolchain[0][cc_common.CcToolchainInfo]
     feature_configuration = cc_common.configure_features(
         ctx = ctx,
         cc_toolchain = cc_toolchain,
@@ -92,22 +108,30 @@ def _particle_two_pass_binary_impl(ctx):
         action_name = PW_ACTION_NAMES.objdump_disassemble,
     )
 
-    # Collect all object files and libraries from deps
-    objects = []
-    linker_inputs = []
+    # Collect static libraries from deps, deduplicating by path
+    # NOTE: We deliberately DO NOT collect raw .o files because different cc_library
+    # targets can compile the same source file into different .o files (e.g., both
+    # modules/blinky:nanopb and modules/board:nanopb compile common.pb.c). Collecting
+    # all .o files would cause multiple definition errors. Instead, we link only the
+    # .a archives and use --whole-archive for alwayslink libraries.
+    seen_libs = {}  # path -> File, for deduplication
+    alwayslink_libs = []  # Libraries that need --whole-archive
+    regular_libs = []  # Regular libraries
     for dep in ctx.attr.deps:
         if CcInfo in dep:
             cc_info = dep[CcInfo]
             for li in cc_info.linking_context.linker_inputs.to_list():
                 for lib in li.libraries:
-                    if lib.static_library:
-                        linker_inputs.append(lib.static_library)
-                    if lib.pic_static_library:
-                        linker_inputs.append(lib.pic_static_library)
-                    if lib.objects:
-                        objects.extend(lib.objects)
-                    if lib.pic_objects:
-                        objects.extend(lib.pic_objects)
+                    static_lib = lib.static_library or lib.pic_static_library
+                    if static_lib and static_lib.path not in seen_libs:
+                        seen_libs[static_lib.path] = static_lib
+                        if lib.alwayslink:
+                            alwayslink_libs.append(static_lib)
+                        else:
+                            regular_libs.append(static_lib)
+
+    # Combine all libraries (alwayslink first, then regular)
+    linker_inputs = alwayslink_libs + regular_libs
 
     # Collect linker scripts
     linker_script_files = []
@@ -130,6 +154,17 @@ def _particle_two_pass_binary_impl(ctx):
     # so it overrides the defaults when linker.ld does INCLUDE memory_platform_user.ld
     pass2_linkopts = ["-L" + precise_ld.dirname] + PARTICLE_BASE_LINKOPTS
 
+    # Build library flags using full paths (avoids -L/-l: search path issues)
+    # Use --whole-archive for alwayslink libs to ensure all symbols are included
+    alwayslink_flags = []
+    for lib in alwayslink_libs:
+        alwayslink_flags.append("-Wl,--whole-archive")
+        alwayslink_flags.append(lib.path)
+        alwayslink_flags.append("-Wl,--no-whole-archive")
+
+    regular_flags = [l.path for l in regular_libs]
+    library_flags = " ".join(alwayslink_flags + regular_flags)
+
     # Create the two-pass linking script
     # We use run_shell because we need to execute two linking steps with
     # dynamic generation of the linker script between them
@@ -138,7 +173,7 @@ set -e
 
 # === PASS 1: Link with defaults ===
 echo "Pass 1: Linking with default memory values..."
-{linker} {linker_flags} {objects} {libraries} -o {intermediate_elf}
+{linker} {linker_flags} {libraries} -o {intermediate_elf}
 
 # === Extract sizes from intermediate ELF ===
 echo "Extracting section sizes..."
@@ -150,7 +185,7 @@ python3 {extract_script} \
 
 # === PASS 2: Re-link with precise values ===
 echo "Pass 2: Re-linking with precise memory values..."
-{linker} {linker_flags_pass2} {objects} {libraries} -o {final_elf}
+{linker} {linker_flags_pass2} {libraries} -o {final_elf}
 
 echo "Two-pass linking complete."
 """.format(
@@ -159,8 +194,7 @@ echo "Two-pass linking complete."
         objdump = objdump_path,
         linker_flags = " ".join(base_linkopts + user_linkopts),
         linker_flags_pass2 = " ".join(pass2_linkopts + user_linkopts),
-        objects = " ".join([o.path for o in objects]),
-        libraries = " ".join(["-l:" + l.basename + " -L" + l.dirname for l in linker_inputs]),
+        libraries = library_flags,
         intermediate_elf = intermediate_elf.path,
         sizes_json = sizes_json.path,
         precise_ld = precise_ld.path,
@@ -170,7 +204,7 @@ echo "Two-pass linking complete."
     ctx.actions.run_shell(
         outputs = [intermediate_elf, sizes_json, precise_ld, final_elf],
         inputs = depset(
-            direct = objects + linker_inputs + linker_script_files + [ctx.file._extract_sizes],
+            direct = linker_inputs + linker_script_files + [ctx.file._extract_sizes],
             transitive = [cc_toolchain.all_files],
         ),
         command = script,
@@ -189,8 +223,12 @@ echo "Two-pass linking complete."
 _particle_two_pass_binary = rule(
     implementation = _particle_two_pass_binary_impl,
     attrs = {
-        "deps": attr.label_list(providers = [CcInfo]),
+        "deps": attr.label_list(
+            providers = [CcInfo],
+            cfg = _particle_platform_transition,  # Apply platform transition to deps
+        ),
         "linkopts": attr.string_list(default = []),
+        "platform": attr.label(),  # Platform for transition
         "_linker_scripts": attr.label(
             default = "@particle_bazel//:linker_scripts",
         ),
@@ -200,6 +238,10 @@ _particle_two_pass_binary = rule(
         ),
         "_cc_toolchain": attr.label(
             default = "@bazel_tools//tools/cpp:current_cc_toolchain",
+            cfg = _particle_platform_transition,  # Get toolchain from target platform
+        ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
     },
     executable = True,
@@ -214,6 +256,7 @@ def particle_cc_binary(
         copts = [],
         defines = [],
         linkopts = [],
+        platform = None,
         two_pass = True,
         **kwargs):
     """Creates a Particle P2 firmware binary.
@@ -230,6 +273,7 @@ def particle_cc_binary(
         copts: Additional compiler flags.
         defines: Additional preprocessor defines.
         linkopts: Additional linker flags.
+        platform: Platform label for transition (e.g., "@particle_bazel//platforms/p2:particle_p2").
         two_pass: If True (default), use two-pass linking for precise memory.
                   If False, use single-pass with static defaults.
         **kwargs: Additional arguments passed to the underlying rules.
@@ -242,6 +286,8 @@ def particle_cc_binary(
         deps = deps + [
             "@particle_bazel//:device_os_user_part",
             "@pigweed//pw_assert_basic",
+            "@pigweed//pw_assert_basic:impl",  # Provides pw_assert_basic_HandleFailure
+            "@particle_bazel//pw_assert_particle:handler",  # Provides the actual handler
         ],
         copts = PARTICLE_COPTS + copts,
         defines = defines,
@@ -256,6 +302,7 @@ def particle_cc_binary(
             name = name,
             deps = [":" + lib_name],
             linkopts = linkopts,
+            platform = platform,
             **{k: v for k, v in kwargs.items() if k in ["visibility", "tags", "testonly"]}
         )
     else:
@@ -294,6 +341,7 @@ def particle_firmware_binary(
     )
 
     # Patch SHA256 and CRC32 into the binary
+    # Note: This runs on host (not target), so no target_compatible_with
     native.genrule(
         name = name,
         srcs = [":" + bin_name + ".bin"],
@@ -304,7 +352,6 @@ def particle_firmware_binary(
             python3 $(location @particle_bazel//tools:particle_crc) $@
         """,
         tools = ["@particle_bazel//tools:particle_crc"],
-        target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
         **kwargs
     )
 
@@ -326,4 +373,52 @@ def particle_flash_binary(
         args = ["$(location " + firmware + ")"],
         tags = ["local"],  # Bypass sandbox to access particle credentials
         **kwargs
+    )
+
+def particle_firmware(
+        name,
+        srcs = [],
+        deps = [],
+        copts = [],
+        defines = [],
+        linkopts = [],
+        platform = None,
+        two_pass = True,
+        **kwargs):
+    """Creates a complete Particle firmware with ELF and flashable .bin.
+
+    This is a convenience macro that creates both:
+    - {name}.elf - The linked ELF binary
+    - {name}.bin - The flashable binary with CRC patched
+
+    Args:
+        name: Target name (without extension).
+        srcs: Source files for the firmware.
+        deps: Dependencies (user libraries).
+        copts: Additional compiler flags.
+        defines: Additional preprocessor defines.
+        linkopts: Additional linker flags.
+        platform: Platform label for transition (e.g., "@particle_bazel//platforms/p2:particle_p2").
+        two_pass: If True (default), use two-pass linking for precise memory.
+        **kwargs: Additional arguments passed to underlying rules.
+    """
+    # Create the ELF binary
+    elf_name = name + ".elf"
+    particle_cc_binary(
+        name = elf_name,
+        srcs = srcs,
+        deps = deps,
+        copts = copts,
+        defines = defines,
+        linkopts = linkopts,
+        platform = platform,
+        two_pass = two_pass,
+        **{k: v for k, v in kwargs.items() if k not in ["visibility"]}
+    )
+
+    # Create the flashable .bin
+    particle_firmware_binary(
+        name = name,
+        elf = ":" + elf_name,
+        **{k: v for k, v in kwargs.items() if k in ["visibility", "tags", "testonly"]}
     )

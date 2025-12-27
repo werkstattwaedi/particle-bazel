@@ -51,4 +51,19 @@ class ParticleDigitalOut : public pw::digital_io::DigitalOut {
   bool enabled_ = false;
 };
 
+// Pigweed DigitalInOut backend for Particle using Arduino Wiring API.
+// Wraps pinMode(), digitalRead(), and digitalWrite().
+class ParticleDigitalInOut : public pw::digital_io::DigitalInOut {
+ public:
+  explicit ParticleDigitalInOut(hal_pin_t pin) : pin_(pin) {}
+
+ private:
+  pw::Status DoEnable(bool enable) override;
+  pw::Result<pw::digital_io::State> DoGetState() override;
+  pw::Status DoSetState(pw::digital_io::State state) override;
+
+  hal_pin_t pin_;
+  bool enabled_ = false;
+};
+
 }  // namespace pb

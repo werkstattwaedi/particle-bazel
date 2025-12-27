@@ -6,18 +6,14 @@
 #pragma once
 
 #include "concurrent_hal.h"
-#include "pw_sync/interrupt_spin_lock.h"
 
 namespace pw::sync::backend {
 
+// Use a binary semaphore for thread notification.
+// os_thread_wait/notify are not available in dynalib, but os_semaphore_* are.
 struct NativeThreadNotification {
-  os_thread_t blocked_thread;
-  bool notified;
-  // We use a global ISL for all thread notifications because these backends
-  // only support uniprocessor targets and ergo we reduce the memory cost for
-  // all ISL instances without any risk of spin contention between different
-  // instances.
-  PW_CONSTINIT inline static InterruptSpinLock shared_spin_lock = {};
+  os_semaphore_t semaphore;
+  bool initialized;
 };
 using NativeThreadNotificationHandle = NativeThreadNotification&;
 

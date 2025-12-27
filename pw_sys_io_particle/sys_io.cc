@@ -100,4 +100,29 @@ StatusWithSize WriteLine(std::string_view s) {
   return StatusWithSize(s.size() + 2);
 }
 
+StatusWithSize ReadBytes(ByteSpan dest) {
+  for (size_t i = 0; i < dest.size_bytes(); ++i) {
+    Status result = ReadByte(&dest[i]);
+    if (!result.ok()) {
+      return StatusWithSize(result, i);
+    }
+  }
+  return StatusWithSize(dest.size_bytes());
+}
+
+StatusWithSize WriteBytes(ConstByteSpan src) {
+  EnsureInitialized();
+
+  // Lock for entire buffer - ensures atomic output
+  os_mutex_recursive_lock(g_write_mutex);
+
+  for (size_t i = 0; i < src.size_bytes(); ++i) {
+    WriteByteUnsafe(static_cast<uint8_t>(src[i]));
+  }
+
+  os_mutex_recursive_unlock(g_write_mutex);
+
+  return StatusWithSize(src.size_bytes());
+}
+
 }  // namespace pw::sys_io

@@ -1,8 +1,11 @@
 # Platform definitions for Particle P2 firmware
 
+load("@pigweed//pw_build:merge_flags.bzl", "flags_from_dict")
+
 package(default_visibility = ["//visibility:public"])
 
 # Particle P2 platform (RTL8721DM / Cortex-M33)
+# Includes basic Pigweed backend configurations for Particle.
 platform(
     name = "particle_p2",
     constraint_values = [
@@ -10,6 +13,30 @@ platform(
         "@platforms//cpu:armv8-m",  # Cortex-M33 is ARMv8-M
         "@pigweed//pw_build/constraints/arm:cortex-m33",
     ],
+    flags = flags_from_dict({
+        # C++ standard (C++20 has incompatibilities with gthr-default.h)
+        "@pigweed//pw_toolchain/cc:cxx_standard": "17",
+        # Assert backends (use pw_assert_basic with custom handler)
+        "@pigweed//pw_assert:check_backend": "@pigweed//pw_assert_basic",
+        "@pigweed//pw_assert:check_backend_impl": "@pigweed//pw_assert_basic:impl",
+        "@pigweed//pw_assert_basic:handler_backend": "@particle_bazel//pw_assert_particle:handler",
+        # Log backend
+        "@pigweed//pw_log:backend": "@pigweed//pw_log_basic",
+        "@pigweed//pw_log:backend_impl": "@pigweed//pw_log_basic:impl",
+        # Sys IO backend (for pw_log_basic)
+        "@pigweed//pw_sys_io:backend": "@particle_bazel//pw_sys_io_particle:sys_io",
+        # Chrono backends
+        "@pigweed//pw_chrono:system_clock_backend": "@particle_bazel//pw_chrono_particle:system_clock",
+        "@pigweed//pw_chrono:system_timer_backend": "@particle_bazel//pw_chrono_particle:system_timer",
+        # Thread backends
+        "@pigweed//pw_thread:id_backend": "@particle_bazel//pw_thread_particle:id",
+        "@pigweed//pw_thread:yield_backend": "@particle_bazel//pw_thread_particle:yield",
+        "@pigweed//pw_thread:sleep_backend": "@particle_bazel//pw_thread_particle:sleep",
+        "@pigweed//pw_thread:thread_backend": "@particle_bazel//pw_thread_particle:thread",
+        # Sync backends
+        "@pigweed//pw_sync:mutex_backend": "@particle_bazel//pw_sync_particle:mutex",
+        "@pigweed//pw_sync:interrupt_spin_lock_backend": "@particle_bazel//pw_sync_particle:interrupt_spin_lock",
+    }),
 )
 
 # Config setting to detect P2 builds

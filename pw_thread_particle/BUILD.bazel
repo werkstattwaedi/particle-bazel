@@ -41,6 +41,7 @@ cc_library(
         "@pigweed//pw_span",
         "@pigweed//pw_thread:id.facade",
         "@pigweed//pw_thread:thread.facade",
+        "@pigweed//pw_toolchain:constexpr_tag",
     ],
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
 )

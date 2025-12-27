@@ -293,6 +293,19 @@ cc_library(
 )
 
 # =============================================================================
+# Pigweed Entry Point Glue
+# =============================================================================
+# Provides Particle entry points (setup, loop, etc.) that call into main().
+
+cc_library(
+    name = "pigweed_entry",
+    srcs = ["pigweed_entry.cc"],
+    alwayslink = True,
+    target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
+    visibility = ["//visibility:public"],
+)
+
+# =============================================================================
 # Combined Device OS User-Part Library
 # =============================================================================
 
@@ -305,7 +318,7 @@ cc_library(
         ":system_dynalib",
         ":rt_dynalib",
         ":communication_dynalib",
-        # Note: wiring/wiring_globals excluded - using Pigweed abstractions instead
+        ":pigweed_entry",  # Provides setup/loop entry points for Pigweed apps
     ],
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
 )
