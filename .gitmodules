@@ -1,3 +1,4 @@
 [submodule "particle/device-os"]
 	path = third_party/device-os
-	url = https://github.com/particle-iot/device-os.git
+	url = https://github.com/werkstattwaedi/device-os.git
+	branch = gthread-condition-variables
