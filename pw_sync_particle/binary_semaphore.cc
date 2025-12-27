@@ -1,0 +1,48 @@
+// Copyright 2024 Werkstatt Waedi
+// SPDX-License-Identifier: Apache-2.0
+
+#include "pw_sync/binary_semaphore.h"
+
+#include "concurrent_hal.h"
+#include "pw_chrono/system_clock.h"
+
+using pw::chrono::SystemClock;
+
+namespace pw::sync {
+
+bool BinarySemaphore::try_acquire_for(SystemClock::duration timeout) {
+  // Use non-blocking try_acquire for negative and zero length durations.
+  if (timeout <= SystemClock::duration::zero()) {
+    return try_acquire();
+  }
+
+  // Convert duration to milliseconds for Device OS API.
+  const int64_t timeout_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
+
+  // Handle timeouts that exceed the max value for system_tick_t.
+  constexpr int64_t kMaxTimeoutMs =
+      static_cast<int64_t>(CONCURRENT_WAIT_FOREVER) - 1;
+
+  if (timeout_ms > kMaxTimeoutMs) {
+    // For very long timeouts, loop with max timeout chunks.
+    int64_t remaining_ms = timeout_ms;
+    while (remaining_ms > kMaxTimeoutMs) {
+      if (os_semaphore_take(native_type_,
+                            static_cast<system_tick_t>(kMaxTimeoutMs),
+                            false) == 0) {
+        return true;
+      }
+      remaining_ms -= kMaxTimeoutMs;
+    }
+    return os_semaphore_take(native_type_,
+                             static_cast<system_tick_t>(remaining_ms),
+                             false) == 0;
+  }
+
+  return os_semaphore_take(native_type_,
+                           static_cast<system_tick_t>(timeout_ms),
+                           false) == 0;
+}
+
+}  // namespace pw::sync

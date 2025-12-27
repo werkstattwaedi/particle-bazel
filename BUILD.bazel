@@ -105,6 +105,8 @@ DEVICE_OS_INCLUDES = [
     "third_party/device-os/third_party/ambd_sdk/ambd_sdk/component/soc/realtek/amebad/misc",
     "third_party/device-os/third_party/ambd_sdk/ambd_sdk/component/os/os_dep/include",
     "third_party/device-os/third_party/ambd_sdk/ambd_sdk/component/os/freertos",
+    "third_party/device-os/third_party/ambd_sdk/ambd_sdk/component/os/freertos/freertos_v10.2.0/Source/include",
+    "third_party/device-os/third_party/ambd_sdk/ambd_sdk/component/os/freertos/freertos_v10.2.0/Source/portable/GCC/RTL8721D_HP/non_secure",
     "third_party/device-os/third_party/ambd_sdk/ambd_sdk/component/common/api",
     "third_party/device-os/third_party/ambd_sdk/ambd_sdk/component/common/api/platform",
     "third_party/device-os/third_party/ambd_sdk/ambd_sdk/component/common/api/wifi",

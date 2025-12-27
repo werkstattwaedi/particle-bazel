@@ -49,7 +49,7 @@ build:p2 --@pigweed//pw_sync:mutex_backend=@particle_bazel//pw_sync_particle:mut
 build:p2 --@pigweed//pw_thread:id_backend=@particle_bazel//pw_thread_particle:id
 build:p2 --@pigweed//pw_thread:yield_backend=@particle_bazel//pw_thread_particle:yield
 build:p2 --@pigweed//pw_thread:sleep_backend=@particle_bazel//pw_thread_particle:sleep
-build:p2 --@pigweed//pw_thread:thread_backend=@pigweed//pw_thread:generic_thread_creation_unsupported
+build:p2 --@pigweed//pw_thread:thread_backend=@particle_bazel//pw_thread_particle:thread
 
 # Host build for tests (uses default host platform)
 # No --platforms needed for host builds
