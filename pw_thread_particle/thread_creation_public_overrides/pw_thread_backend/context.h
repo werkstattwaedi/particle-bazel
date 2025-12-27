@@ -1,5 +1,5 @@
 // Copyright 2024. All rights reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
 // Generic thread creation backend context for Particle Device OS.
 #pragma once

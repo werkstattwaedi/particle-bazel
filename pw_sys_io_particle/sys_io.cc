@@ -1,5 +1,5 @@
-// Copyright 2024 Werkstatt Waedi
-// SPDX-License-Identifier: Apache-2.0
+// Copyright Offene Werkstatt Wädenswil
+// SPDX-License-Identifier: MIT
 //
 // pw_sys_io backend for Particle Device OS using USB CDC Serial
 // This enables logging via `particle serial monitor`

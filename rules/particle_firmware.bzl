@@ -1,3 +1,6 @@
+# Copyright Offene Werkstatt Wädenswil
+# SPDX-License-Identifier: MIT
+
 """Bazel rules for building Particle P2 firmware with two-pass linking.
 
 This module implements two-pass linking for accurate OTA-compatible module

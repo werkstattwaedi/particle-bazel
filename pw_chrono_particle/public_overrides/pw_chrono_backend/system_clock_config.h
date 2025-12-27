@@ -1,5 +1,5 @@
-// Copyright 2024 Werkstatt Waedi
-// SPDX-License-Identifier: Apache-2.0
+// Copyright Offene Werkstatt Wädenswil
+// SPDX-License-Identifier: MIT
 //
 // Public override to redirect pw_chrono_backend to particle_chrono
 

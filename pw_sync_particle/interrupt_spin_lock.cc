@@ -1,5 +1,5 @@
 // Copyright 2024. All rights reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 #include "pw_sync/interrupt_spin_lock.h"
 

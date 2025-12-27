@@ -1,5 +1,5 @@
-// Copyright 2024 Werkstatt Waedi
-// SPDX-License-Identifier: Apache-2.0
+// Copyright Offene Werkstatt Wädenswil
+// SPDX-License-Identifier: MIT
 //
 // Minimal HAL-level bridge from Particle Device OS logging to pw_log.
 

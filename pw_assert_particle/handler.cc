@@ -1,5 +1,5 @@
-// Copyright 2024 Werkstatt Waedi
-// SPDX-License-Identifier: Apache-2.0
+// Copyright Offene Werkstatt Wädenswil
+// SPDX-License-Identifier: MIT
 //
 // Minimal pw_assert_basic handler for Particle P2 firmware.
 // Triggers a breakpoint on assertion failure for debugger attachment.

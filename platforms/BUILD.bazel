@@ -1,3 +1,6 @@
+# Copyright Offene Werkstatt Wädenswil
+# SPDX-License-Identifier: MIT
+
 # Platform definitions for Particle devices
 # Each subdirectory contains platform-specific definitions
 

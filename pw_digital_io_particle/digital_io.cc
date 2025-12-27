@@ -1,5 +1,5 @@
 // Copyright 2024. All rights reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 #include "pb_digital_io/digital_io.h"
 

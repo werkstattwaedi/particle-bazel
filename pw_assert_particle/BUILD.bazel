@@ -1,3 +1,6 @@
+# Copyright Offene Werkstatt Wädenswil
+# SPDX-License-Identifier: MIT
+
 # pw_assert handler for Particle firmware
 # Provides a simple handler that triggers a breakpoint on assertion failure.
 

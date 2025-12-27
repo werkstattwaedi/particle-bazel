@@ -1,3 +1,6 @@
+# Copyright Offene Werkstatt Wädenswil
+# SPDX-License-Identifier: MIT
+
 # Particle Bazel - Bazel infrastructure for Particle firmware with Pigweed
 #
 # Device OS SDK for P2 (RTL8721DM / Cortex-M33)

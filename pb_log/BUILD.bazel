@@ -1,3 +1,6 @@
+# Copyright Offene Werkstatt Wädenswil
+# SPDX-License-Identifier: MIT
+
 # Particle Device OS to pw_log bridge
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")

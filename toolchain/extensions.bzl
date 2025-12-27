@@ -1,3 +1,6 @@
+# Copyright Offene Werkstatt Wädenswil
+# SPDX-License-Identifier: MIT
+
 """Module extension for ARM GCC toolchain."""
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

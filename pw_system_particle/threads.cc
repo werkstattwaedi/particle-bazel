@@ -1,5 +1,5 @@
-// Copyright 2024 Werkstatt Waedi
-// SPDX-License-Identifier: Apache-2.0
+// Copyright Offene Werkstatt Wädenswil
+// SPDX-License-Identifier: MIT
 //
 // Particle Device OS replacement for pw_system's scheduler startup.
 // On Particle, the scheduler is already running when user code starts,
