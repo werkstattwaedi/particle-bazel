@@ -15,8 +15,8 @@ git_override(
 
 
 # Standard dependencies
-bazel_dep(name = "platforms", version = "0.0.10")
-bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "rules_cc", version = "0.2.4")
 
 # Use ARM GCC 10.2.1 toolchain (matching Particle's toolchain version)
 arm_toolchain = use_extension("//toolchain:extensions.bzl", "arm_toolchain")
