@@ -7,6 +7,13 @@ module(
 # The consuming project should set up pigweed via local_path_override
 bazel_dep(name = "pigweed")
 
+git_override(
+    module_name = "pigweed",
+    commit = "dea5f7686bccfe787455863db8f4d8d35ea93dcb",
+    remote = "https://pigweed.googlesource.com/pigweed/pigweed",
+)
+
+
 # Standard dependencies
 bazel_dep(name = "platforms", version = "0.0.10")
 bazel_dep(name = "rules_cc", version = "0.1.1")

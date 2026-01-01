@@ -27,11 +27,11 @@ common --host_per_file_copt=external/.*,.*\.pb\.cc@-w
 # Platform configurations
 # ============================================
 
+# Use C++17 globally to match Particle Device OS and Pigweed requirements
+build --@pigweed//pw_toolchain/cc:cxx_standard=17
+
 # Particle P2 firmware build (Cortex-M33)
 build:p2 --platforms=@particle_bazel//platforms/p2:particle_p2
-
-# Use C++17 to match Particle Device OS requirements
-build:p2 --@pigweed//pw_toolchain/cc:cxx_standard=17
 
 # Pigweed backends for embedded target
 build:p2 --@pigweed//pw_assert:check_backend=@pigweed//pw_assert_basic
@@ -42,8 +42,9 @@ build:p2 --@pigweed//pw_sys_io:backend=@particle_bazel//pw_sys_io_particle:sys_i
 # Chrono backend using Particle HAL timer
 build:p2 --@pigweed//pw_chrono:system_clock_backend=@particle_bazel//pw_chrono_particle:system_clock
 
-# Sync backend using Particle HAL concurrent functions
+# Sync backends using Particle HAL concurrent functions
 build:p2 --@pigweed//pw_sync:mutex_backend=@particle_bazel//pw_sync_particle:mutex
+build:p2 --@pigweed//pw_sync:binary_semaphore_backend=@particle_bazel//pw_sync_particle:binary_semaphore
 
 # Thread backends using Particle HAL concurrent functions
 build:p2 --@pigweed//pw_thread:id_backend=@particle_bazel//pw_thread_particle:id

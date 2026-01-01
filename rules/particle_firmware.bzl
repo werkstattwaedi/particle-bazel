@@ -341,6 +341,7 @@ def particle_firmware_binary(
         name = bin_name,
         elf_input = elf,
         bin_out = bin_name + ".bin",
+        testonly = kwargs.get("testonly", False),
     )
 
     # Patch SHA256 and CRC32 into the binary

@@ -6,8 +6,10 @@
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
-    "particle_firmware.bzl",
     "flash.sh",
+    "flash_test.sh",
     "memory_platform_user.ld",
     "memory_platform_user_defaults.ld",
+    "particle_firmware.bzl",
+    "particle_test.bzl",
 ])
