@@ -158,6 +158,11 @@ pw::Status ParticleSpiInitiator::DoWriteRead(pw::ConstByteSpan write_buffer,
     return pw::OkStatus();
   }
 
+  // Drain any stale semaphore releases from previous timed-out transfers.
+  // This ensures we start with a clean state.
+  while (dma_complete_.try_acquire()) {
+  }
+
   // Start DMA transfer
   // Note: For write-only transfers (display), rx_buffer is nullptr
   // For read-only transfers, tx_buffer can be nullptr (will send 0x00)
@@ -167,13 +172,19 @@ pw::Status ParticleSpiInitiator::DoWriteRead(pw::ConstByteSpan write_buffer,
                        static_cast<uint32_t>(transfer_len),
                        GetDmaCallback(interface_));
 
-  // Wait for DMA completion with timeout
-  constexpr auto kDmaTimeout =
-      pw::chrono::SystemClock::for_at_least(std::chrono::milliseconds(100));
+  // Calculate timeout based on transfer size and clock frequency.
+  // Time = (bytes * 8 bits) / clock_hz, with 2x margin + 10ms minimum overhead.
+  const uint32_t transfer_time_us =
+      static_cast<uint32_t>((transfer_len * 8 * 1'000'000) / clock_hz_);
+  const uint32_t timeout_ms =
+      std::max<uint32_t>(transfer_time_us / 500, 10);  // 2x margin
+  const auto dma_timeout = pw::chrono::SystemClock::for_at_least(
+      std::chrono::milliseconds(timeout_ms));
 
-  if (!dma_complete_.try_acquire_for(kDmaTimeout)) {
+  if (!dma_complete_.try_acquire_for(dma_timeout)) {
     PW_LOG_ERROR("SPI DMA transfer timed out");
     hal_spi_transfer_dma_cancel(hal_interface);
+    // Late callback will be drained at start of next transfer
     return pw::Status::DeadlineExceeded();
   }
 
