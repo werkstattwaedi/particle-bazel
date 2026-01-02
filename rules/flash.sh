@@ -1,5 +1,8 @@
 #!/bin/bash
-# Flash Particle firmware via USB
+# Copyright Offene Werkstatt Wädenswil
+# SPDX-License-Identifier: MIT
+#
+# Flash Particle firmware via USB.
 # Usage: flash.sh <firmware_path>
 set -e
 
@@ -32,5 +35,10 @@ if [ ! -f "$FIRMWARE" ]; then
     exit 1
 fi
 
-echo "Flashing firmware: $FIRMWARE"
+WAIT_SCRIPT="$RUNFILES/particle_bazel+/rules/wait_for_device.sh"
+
+echo "=== Waiting for device ==="
+"$WAIT_SCRIPT" 20
+
+echo "=== Flashing firmware: $FIRMWARE ==="
 particle flash --local "$FIRMWARE"

@@ -89,7 +89,10 @@ def _particle_test_flash_binary(
     native.sh_binary(
         name = name,
         srcs = ["@particle_bazel//rules:flash_test.sh"],
-        data = [firmware],
+        data = [
+            firmware,
+            "@particle_bazel//rules:wait_for_device.sh",
+        ],
         args = ["$(location " + firmware + ")"],
         tags = ["local"],  # Bypass sandbox for device access
         **kwargs

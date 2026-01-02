@@ -373,7 +373,10 @@ def particle_flash_binary(
     native.sh_binary(
         name = name,
         srcs = ["@particle_bazel//rules:flash.sh"],
-        data = [firmware],
+        data = [
+            firmware,
+            "@particle_bazel//rules:wait_for_device.sh",
+        ],
         args = ["$(location " + firmware + ")"],
         tags = ["local"],  # Bypass sandbox to access particle credentials
         **kwargs

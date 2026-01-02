@@ -42,22 +42,8 @@ particle flash --local "$FIRMWARE"
 echo ""
 echo "=== Waiting for device to reconnect ==="
 
-TIMEOUT=15
-ELAPSED=0
-while [ $ELAPSED -lt $TIMEOUT ]; do
-    if particle serial list 2>/dev/null | grep -q "ttyACM\|ttyUSB"; then
-        echo "Device found!"
-        break
-    fi
-    sleep 1
-    ELAPSED=$((ELAPSED + 1))
-    echo "Waiting... ($ELAPSED/$TIMEOUT)"
-done
-
-if [ $ELAPSED -ge $TIMEOUT ]; then
-    echo "Error: Device did not reconnect within $TIMEOUT seconds"
-    exit 1
-fi
+WAIT_SCRIPT="$RUNFILES/particle_bazel+/rules/wait_for_device.sh"
+"$WAIT_SCRIPT" 20
 
 echo ""
 echo "=== Opening serial monitor (Ctrl+C to exit) ==="

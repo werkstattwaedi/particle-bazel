@@ -8,6 +8,7 @@ package(default_visibility = ["//visibility:public"])
 exports_files([
     "flash.sh",
     "flash_test.sh",
+    "wait_for_device.sh",
     "memory_platform_user.ld",
     "memory_platform_user_defaults.ld",
     "particle_firmware.bzl",
