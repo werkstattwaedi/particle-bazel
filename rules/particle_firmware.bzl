@@ -392,8 +392,11 @@ def particle_firmware(
     """Creates a complete Particle firmware with ELF and flashable .bin.
 
     This is a convenience macro that creates both:
-    - {name}.elf - The linked ELF binary
-    - {name}.bin - The flashable binary with CRC patched
+    - {name} - The linked ELF binary (default target for development/IDE)
+    - {name}.bin - The flashable binary with CRC patched (for flashing)
+
+    The ELF is the default because it's what you build during development
+    and it generates proper compile commands for IDE support.
 
     Args:
         name: Target name (without extension).
@@ -406,10 +409,9 @@ def particle_firmware(
         two_pass: If True (default), use two-pass linking for precise memory.
         **kwargs: Additional arguments passed to underlying rules.
     """
-    # Create the ELF binary
-    elf_name = name + ".elf"
+    # Create the ELF binary as the default target
     particle_cc_binary(
-        name = elf_name,
+        name = name,
         srcs = srcs,
         deps = deps,
         copts = copts,
@@ -421,8 +423,9 @@ def particle_firmware(
     )
 
     # Create the flashable .bin
+    bin_name = name + ".bin"
     particle_firmware_binary(
-        name = name,
-        elf = ":" + elf_name,
+        name = bin_name,
+        elf = ":" + name,
         **{k: v for k, v in kwargs.items() if k in ["visibility", "tags", "testonly"]}
     )
