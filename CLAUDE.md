@@ -33,6 +33,7 @@ This repository provides Pigweed backends for Particle Device OS:
 - `pw_sys_io_particle/` - I/O backend using USB CDC serial
 - `pw_assert_particle/` - Assert handler for Device OS
 - `pw_digital_io_particle/` - Digital I/O using Device OS HAL
+- `pw_stream_particle/` - UART stream using Device OS HAL (non-blocking)
 - `pw_system_particle/` - pw_system integration (scheduler stub)
 - `rules/` - Bazel rules for Particle firmware builds
 
