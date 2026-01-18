@@ -34,9 +34,10 @@ build --@pigweed//pw_toolchain/cc:cxx_standard=17
 build:p2 --platforms=@particle_bazel//platforms/p2:particle_p2
 
 # Pigweed backends for embedded target
+# Note: Most backends are configured in platform definitions, not here.
+# These are kept for compatibility with builds that don't specify a platform.
 build:p2 --@pigweed//pw_assert:check_backend=@pigweed//pw_assert_basic
 build:p2 --@pigweed//pw_assert:assert_backend=@pigweed//pw_assert_basic
-build:p2 --@pigweed//pw_log:backend=@pigweed//pw_log_basic
 build:p2 --@pigweed//pw_sys_io:backend=@particle_bazel//pw_sys_io_particle:sys_io
 
 # Chrono backend using Particle HAL timer

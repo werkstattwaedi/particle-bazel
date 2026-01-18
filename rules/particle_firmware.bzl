@@ -111,7 +111,7 @@ def _particle_two_pass_binary_impl(ctx):
         action_name = PW_ACTION_NAMES.objdump_disassemble,
     )
 
-    # Collect static libraries from deps, deduplicating by path
+    # Collect static libraries and user link flags from deps
     # NOTE: We deliberately DO NOT collect raw .o files because different cc_library
     # targets can compile the same source file into different .o files (e.g., both
     # modules/blinky:nanopb and modules/board:nanopb compile common.pb.c). Collecting
@@ -120,10 +120,15 @@ def _particle_two_pass_binary_impl(ctx):
     seen_libs = {}  # path -> File, for deduplication
     alwayslink_libs = []  # Libraries that need --whole-archive
     regular_libs = []  # Regular libraries
+    user_link_flags = []  # Additional linker flags (e.g., -T for linker scripts)
+    additional_linker_inputs = []  # Files needed by user_link_flags
     for dep in ctx.attr.deps:
         if CcInfo in dep:
             cc_info = dep[CcInfo]
             for li in cc_info.linking_context.linker_inputs.to_list():
+                # Collect user link flags (e.g., -T linker_script.ld from pw_linker_script)
+                user_link_flags.extend(li.user_link_flags)
+                additional_linker_inputs.extend(li.additional_inputs)
                 for lib in li.libraries:
                     static_lib = lib.static_library or lib.pic_static_library
                     if static_lib and static_lib.path not in seen_libs:
@@ -168,6 +173,10 @@ def _particle_two_pass_binary_impl(ctx):
     regular_flags = [l.path for l in regular_libs]
     library_flags = " ".join(alwayslink_flags + regular_flags)
 
+    # Combine all linker flags (base + user-specified + deps' user_link_flags)
+    all_linkopts = base_linkopts + user_linkopts + user_link_flags
+    all_linkopts_pass2 = pass2_linkopts + user_linkopts + user_link_flags
+
     # Create the two-pass linking script
     # We use run_shell because we need to execute two linking steps with
     # dynamic generation of the linker script between them
@@ -195,8 +204,8 @@ echo "Two-pass linking complete."
         linker = linker_path,
         extract_script = ctx.file._extract_sizes.path,
         objdump = objdump_path,
-        linker_flags = " ".join(base_linkopts + user_linkopts),
-        linker_flags_pass2 = " ".join(pass2_linkopts + user_linkopts),
+        linker_flags = " ".join(all_linkopts),
+        linker_flags_pass2 = " ".join(all_linkopts_pass2),
         libraries = library_flags,
         intermediate_elf = intermediate_elf.path,
         sizes_json = sizes_json.path,
@@ -207,7 +216,7 @@ echo "Two-pass linking complete."
     ctx.actions.run_shell(
         outputs = [intermediate_elf, sizes_json, precise_ld, final_elf],
         inputs = depset(
-            direct = linker_inputs + linker_script_files + [ctx.file._extract_sizes],
+            direct = linker_inputs + linker_script_files + list(additional_linker_inputs) + [ctx.file._extract_sizes],
             transitive = [cc_toolchain.all_files],
         ),
         command = script,
