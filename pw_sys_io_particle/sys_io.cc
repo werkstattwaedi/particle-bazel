@@ -1,10 +1,14 @@
 // Copyright Offene Werkstatt Wädenswil
 // SPDX-License-Identifier: MIT
 //
-// pw_sys_io backend for Particle Device OS using USB CDC Serial
-// This enables logging via `particle serial monitor`
+// pw_sys_io backend for Particle Device OS using USB CDC Serial.
+// This enables logging via `particle serial monitor` and RPC via pw_console.
 //
-// Thread-safe: WriteLine is protected by mutex for atomic log lines.
+// Key behaviors:
+// - ReadBytes: Blocks for first byte, then returns all available data.
+//   This is critical for pw_system:async which expects stream-like behavior.
+// - WriteLine: Protected by mutex for atomic log lines.
+// - Thread yields during blocking reads to avoid starving other RTOS threads.
 
 #include "pw_sys_io/sys_io.h"
 
@@ -41,7 +45,9 @@ Status ReadByte(std::byte* dest) {
   EnsureInitialized();
 
   while (HAL_USB_USART_Available_Data(kSerial) <= 0) {
-    // Busy wait - consider yielding in RTOS context
+    // Yield to allow other threads to run while waiting for data.
+    // Without this, busy-wait can starve other RTOS threads.
+    os_thread_yield();
   }
 
   int32_t data = HAL_USB_USART_Receive_Data(kSerial, 0);
@@ -101,13 +107,27 @@ StatusWithSize WriteLine(std::string_view s) {
 }
 
 StatusWithSize ReadBytes(ByteSpan dest) {
-  for (size_t i = 0; i < dest.size_bytes(); ++i) {
-    Status result = ReadByte(&dest[i]);
-    if (!result.ok()) {
-      return StatusWithSize(result, i);
-    }
+  if (dest.empty()) {
+    return StatusWithSize(0);
   }
-  return StatusWithSize(dest.size_bytes());
+
+  // Block for at least one byte
+  Status result = ReadByte(&dest[0]);
+  if (!result.ok()) {
+    return StatusWithSize(result, 0);
+  }
+
+  // Then read as many more bytes as available (non-blocking)
+  size_t bytes_read = 1;
+  while (bytes_read < dest.size_bytes()) {
+    result = TryReadByte(&dest[bytes_read]);
+    if (!result.ok()) {
+      break;  // No more data available right now
+    }
+    ++bytes_read;
+  }
+
+  return StatusWithSize(bytes_read);
 }
 
 StatusWithSize WriteBytes(ConstByteSpan src) {
