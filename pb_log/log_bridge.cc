@@ -12,6 +12,10 @@
 #include <cstddef>
 
 #include "logging.h"
+
+#define PW_LOG_MODULE_NAME "device_os"
+#define PW_LOG_LEVEL PW_LOG_LEVEL_WARN
+
 #include "pw_log/log.h"
 #include "pw_sys_io/sys_io.h"
 
