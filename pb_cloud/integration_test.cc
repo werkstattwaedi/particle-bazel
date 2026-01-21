@@ -9,13 +9,12 @@
 /// 2. Functions can be called
 /// 3. Events are published
 ///
-/// Note: Event subscription is WIP - local system events work but external
-/// events from CLI/Console are not yet received. See spark_subscribe and
-/// spark_protocol_send_subscriptions for the underlying issue.
+/// 4. Events can be subscribed to and received
 ///
 /// See console output for instructions.
 
 #include <cstring>
+#include <optional>
 
 #include "pb_cloud/cloud_backend.h"
 #include "pb_cloud/particle_cloud_backend.h"
@@ -45,6 +44,9 @@ int g_last_function_result = 0;
 pb::cloud::CloudVariable<int>* g_counter_var = nullptr;
 pb::cloud::CloudVariable<int>* g_function_result_var = nullptr;
 pb::cloud::CloudStringVariable<>* g_status_var = nullptr;
+
+// Event subscription receiver
+std::optional<pb::cloud::EventReceiver> g_event_receiver;
 
 // Cloud function handlers
 int IncrementCounter(std::string_view arg) {
@@ -131,9 +133,10 @@ void PrintInstructions() {
   PW_LOG_INFO("  4. Verify counter variable is now 5");
   PW_LOG_INFO("  5. Call function 'publish' with arg 'hello'");
   PW_LOG_INFO("  6. Check Events tab for 'pb_cloud_test/response'");
-  PW_LOG_INFO("========================================");
   PW_LOG_INFO("");
-  PW_LOG_INFO("NOTE: Event subscription is WIP - not tested here.");
+  PW_LOG_INFO("Subscription Test:");
+  PW_LOG_INFO("  7. From CLI: particle publish pb_cloud_test/cmd hello");
+  PW_LOG_INFO("  8. Watch serial output for 'Received event' log");
   PW_LOG_INFO("========================================");
 }
 
@@ -188,6 +191,12 @@ TEST_F(PbCloudIntegrationTest, ManualVerification) {
     os_thread_yield();
   }
   PW_LOG_INFO("Cloud connected!");
+
+  // Subscribe to events now that we're connected
+  auto& cloud = pb::cloud::GetParticleCloudBackend();
+  g_event_receiver.emplace(cloud.Subscribe("pb_cloud_test/"));
+  PW_LOG_INFO("Subscribed to pb_cloud_test/");
+
   PW_LOG_INFO("");
   PW_LOG_INFO("Running for 5 minutes to allow manual testing...");
   PW_LOG_INFO("Variables and functions are now available on Particle Console.");
@@ -204,6 +213,23 @@ TEST_F(PbCloudIntegrationTest, ManualVerification) {
   while (true) {
     spark_process();
     os_thread_yield();
+
+    // Check for received events (non-blocking)
+    if (g_event_receiver) {
+      auto result = g_event_receiver->TryReceive();
+      if (result.ok()) {
+        auto& event = result.value();
+        PW_LOG_INFO("Received event: name=%s, data_size=%u",
+                    event.name.c_str(), static_cast<unsigned>(event.data.size()));
+        // Log data as string if it's text
+        if (!event.data.empty()) {
+          pw::InlineString<256> data_str(
+              reinterpret_cast<const char*>(event.data.data()),
+              event.data.size());
+          PW_LOG_INFO("  data: %s", data_str.c_str());
+        }
+      }
+    }
 
     // Print status every 30 seconds
     auto elapsed = pw::chrono::SystemClock::now() - start;
