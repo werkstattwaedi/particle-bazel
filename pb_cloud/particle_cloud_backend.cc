@@ -3,13 +3,9 @@
 
 #include "pb_cloud/particle_cloud_backend.h"
 
-#include <array>
 #include <cstring>
-#include <memory>
 
 #include "pw_assert/check.h"
-#include "pw_async2/channel.h"
-#include "pw_string/string.h"
 #include "spark_wiring_string.h"
 #include "system_cloud.h"
 
@@ -20,102 +16,35 @@
 namespace pb::cloud {
 namespace {
 
-/// Default channel capacity for event buffering.
-inline constexpr uint16_t kEventChannelCapacity = 8;
-
 // -- Threading Model --
 // Particle Device OS runs all application code and callbacks on the same
 // system thread. Event callbacks (OnEventReceived, OnPublishComplete) and
 // cloud function invocations are serialized with application code.
 // No synchronization is needed for accessing shared state.
 
-/// Particle Cloud backend implementation using spark_* dynalib.
-class ParticleCloudBackend : public CloudBackend {
- public:
-  ParticleCloudBackend();
-  ~ParticleCloudBackend();
-
-  // Function handlers accessible to trampolines (via g_instance).
-  std::array<CloudFunction, kMaxCloudFunctions> function_handlers_{};
-
-  PublishFuture Publish(std::string_view name,
-                        pw::ConstByteSpan data,
-                        const PublishOptions& options) override;
-
-  EventReceiver Subscribe(std::string_view prefix) override;
-
-  pw::Status RegisterFunction(std::string_view name,
-                               CloudFunction&& handler) override;
-
- protected:
-  pw::Status DoRegisterVariable(
-      std::string_view name,
-      const void* data,
-      VariableType type,
-      std::unique_ptr<void, VariableDeleter> storage) override;
-
- private:
-  EventReceiver CreateSubscriptionReceiver();
-
-  static void OnPublishComplete(int error,
-                                const void* data,
-                                void* reserved,
-                                void* reserved2);
-
-  // Simple EventHandler callback (uses g_instance for routing)
-  static void OnEventReceived(const char* event_name, const char* data);
-
-  pw::async2::ValueProvider<pw::Status> publish_provider_;
-
-  // Event channel for subscription
-  pw::async2::ChannelStorage<ReceivedEvent, kEventChannelCapacity>
-      event_channel_storage_;
-  pw::async2::SpscChannelHandle<ReceivedEvent> event_channel_handle_;
-  pw::async2::Sender<ReceivedEvent> event_sender_;
-
-  pw::InlineString<kMaxEventNameSize> subscription_prefix_;
-
-  // Variable storage (ownership of CloudVariable containers)
-  // Use shared_ptr instead of unique_ptr<void, fn_ptr> to avoid
-  // initialization issues with function pointer deleters
-  std::array<std::shared_ptr<void>, kMaxCloudVariables> variable_storage_{};
-  size_t variable_count_ = 0;
-
-  // Function count (handlers are stored in public function_handlers_)
-  size_t function_count_ = 0;
-};
-
-/// Global instance pointer for trampoline access.
-/// Set during ParticleCloudBackend construction, cleared on destruction.
-/// Only one instance is allowed (enforced by PW_CHECK).
+/// Instance pointer for trampoline access.
+/// Set when Instance() is first called, never cleared (singleton lives forever).
 ParticleCloudBackend* g_instance = nullptr;
 
 // -- Static Function Trampolines --
 // Particle requires raw C function pointers. We use 15 static trampolines
 // that dispatch to pw::Function handlers stored in the backend instance.
-// These must be defined AFTER the full ParticleCloudBackend class definition
-// to avoid incomplete type errors.
 
 /// Static trampoline for slot N - dispatches to instance handler.
 /// Note: Particle cloud functions receive a String object (not const char*).
-#define DEFINE_TRAMPOLINE(N)                                                 \
-  int FunctionTrampoline##N(String arg) {                                    \
-    const char* arg_cstr = arg.c_str();                                      \
-    PW_LOG_INFO("Trampoline%d called, g_instance=%p, arg=%s",                \
-                N, static_cast<void*>(g_instance),                           \
-                arg_cstr ? arg_cstr : "(null)");                             \
-    if (!g_instance) {                                                       \
-      PW_LOG_ERROR("Trampoline%d: g_instance is null!", N);                  \
-      return -1;                                                             \
-    }                                                                        \
-    if (!g_instance->function_handlers_[N]) {                                \
-      PW_LOG_ERROR("Trampoline%d: handler is null!", N);                     \
-      return -1;                                                             \
-    }                                                                        \
-    int result = g_instance->function_handlers_[N](                          \
-        std::string_view(arg_cstr, arg.length()));                           \
-    PW_LOG_INFO("Trampoline%d returned %d", N, result);                      \
-    return result;                                                           \
+#define DEFINE_TRAMPOLINE(N)                                               \
+  int FunctionTrampoline##N(String arg) {                                  \
+    const char* arg_cstr = arg.c_str();                                    \
+    PW_LOG_INFO("Trampoline%d called, arg=%s", N,                          \
+                arg_cstr ? arg_cstr : "(null)");                           \
+    if (!g_instance || !g_instance->GetHandler(N)) {                       \
+      PW_LOG_ERROR("Trampoline%d: handler is null!", N);                   \
+      return -1;                                                           \
+    }                                                                      \
+    int result = g_instance->GetHandler(N)(                                \
+        std::string_view(arg_cstr, arg.length()));                         \
+    PW_LOG_INFO("Trampoline%d returned %d", N, result);                    \
+    return result;                                                         \
   }
 
 DEFINE_TRAMPOLINE(0)
@@ -138,22 +67,30 @@ DEFINE_TRAMPOLINE(14)
 
 /// Array of trampoline function pointers for registration with Particle.
 /// Type matches user_function_int_str_t: int(String)
-constexpr std::array<user_function_int_str_t*, kMaxCloudFunctions> kTrampolines = {
-    FunctionTrampoline0,  FunctionTrampoline1,  FunctionTrampoline2,
-    FunctionTrampoline3,  FunctionTrampoline4,  FunctionTrampoline5,
-    FunctionTrampoline6,  FunctionTrampoline7,  FunctionTrampoline8,
-    FunctionTrampoline9,  FunctionTrampoline10, FunctionTrampoline11,
-    FunctionTrampoline12, FunctionTrampoline13, FunctionTrampoline14,
+constexpr std::array<user_function_int_str_t*, kMaxCloudFunctions>
+    kTrampolines = {
+        FunctionTrampoline0,  FunctionTrampoline1,  FunctionTrampoline2,
+        FunctionTrampoline3,  FunctionTrampoline4,  FunctionTrampoline5,
+        FunctionTrampoline6,  FunctionTrampoline7,  FunctionTrampoline8,
+        FunctionTrampoline9,  FunctionTrampoline10, FunctionTrampoline11,
+        FunctionTrampoline12, FunctionTrampoline13, FunctionTrampoline14,
 };
+
+}  // namespace
+
+// -- Singleton Implementation --
+
+ParticleCloudBackend& ParticleCloudBackend::Instance() {
+  static ParticleCloudBackend instance;
+  return instance;
+}
 
 // -- ParticleCloudBackend Implementation --
 
 ParticleCloudBackend::ParticleCloudBackend() {
-  PW_CHECK(g_instance == nullptr,
-           "Only one ParticleCloudBackend instance allowed");
   g_instance = this;
-  PW_LOG_INFO("ParticleCloudBackend constructed, g_instance=0x%08x",
-              reinterpret_cast<unsigned int>(g_instance));
+  PW_LOG_INFO("ParticleCloudBackend constructed at %p",
+              static_cast<void*>(this));
 
   // Log trampoline addresses for debugging
   PW_LOG_INFO("Trampoline array:");
@@ -165,7 +102,6 @@ ParticleCloudBackend::ParticleCloudBackend() {
 
 ParticleCloudBackend::~ParticleCloudBackend() {
   PW_LOG_INFO("ParticleCloudBackend destructing");
-  g_instance = nullptr;
 }
 
 PublishFuture ParticleCloudBackend::Publish(std::string_view name,
@@ -191,19 +127,17 @@ PublishFuture ParticleCloudBackend::Publish(std::string_view name,
   extra.handler_callback = &OnPublishComplete;
   extra.handler_data = &publish_provider_;
 
-  PW_LOG_INFO("Publish: name=%s, data_size=%zu, flags=0x%x",
-              name_str.c_str(), data.size(), static_cast<unsigned>(flags));
+  PW_LOG_INFO("Publish: name=%s, data_size=%zu, flags=0x%x", name_str.c_str(),
+              data.size(), static_cast<unsigned>(flags));
 
   // Start the publish
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  bool started = spark_send_event(
-      name_str.c_str(),
-      reinterpret_cast<const char*>(data.data()),
-      options.ttl_seconds,
-      flags,
-      &extra);
+  bool started = spark_send_event(name_str.c_str(),
+                                  reinterpret_cast<const char*>(data.data()),
+                                  options.ttl_seconds, flags, &extra);
 
-  PW_LOG_INFO("Publish: spark_send_event returned %s", started ? "true" : "false");
+  PW_LOG_INFO("Publish: spark_send_event returned %s",
+              started ? "true" : "false");
 
   if (!started) {
     // Publish failed to start (e.g., not connected)
@@ -221,20 +155,18 @@ EventReceiver ParticleCloudBackend::Subscribe(std::string_view prefix) {
   bool connected = spark_cloud_flag_connected();
   PW_LOG_INFO("Subscribe: cloud_connected=%s", connected ? "true" : "false");
 
-  PW_LOG_INFO("Subscribe: prefix='%s', handler=%p",
-              subscription_prefix_.c_str(),
+  PW_LOG_INFO("Subscribe: prefix='%s', handler=%p", subscription_prefix_.c_str(),
               reinterpret_cast<void*>(&OnEventReceived));
 
   // Use simplest form: no handler_data, no extra params
-  bool success = spark_subscribe(
-      subscription_prefix_.c_str(),
-      &OnEventReceived,
-      nullptr,     // handler_data - null to use simple EventHandler
-      MY_DEVICES,  // deprecated, ignored
-      nullptr,     // deprecated, ignored
-      nullptr);    // no extra params
+  bool success = spark_subscribe(subscription_prefix_.c_str(), &OnEventReceived,
+                                 nullptr,     // handler_data
+                                 MY_DEVICES,  // deprecated, ignored
+                                 nullptr,     // deprecated, ignored
+                                 nullptr);    // no extra params
 
-  PW_LOG_INFO("Subscribe: spark_subscribe returned %s", success ? "true" : "false");
+  PW_LOG_INFO("Subscribe: spark_subscribe returned %s",
+              success ? "true" : "false");
 
   if (!success) {
     PW_LOG_ERROR("Failed to subscribe to %s", subscription_prefix_.c_str());
@@ -245,9 +177,10 @@ EventReceiver ParticleCloudBackend::Subscribe(std::string_view prefix) {
 }
 
 pw::Status ParticleCloudBackend::RegisterFunction(std::string_view name,
-                                                   CloudFunction&& handler) {
+                                                  CloudFunction&& handler) {
   PW_CHECK(function_count_ < kMaxCloudFunctions,
-           "Max cloud functions (%d) exceeded", static_cast<int>(kMaxCloudFunctions));
+           "Max cloud functions (%d) exceeded",
+           static_cast<int>(kMaxCloudFunctions));
 
   // Store handler in slot
   size_t slot = function_count_;
@@ -259,8 +192,8 @@ pw::Status ParticleCloudBackend::RegisterFunction(std::string_view name,
   // Get the trampoline function pointer
   auto trampoline_fn = kTrampolines[slot];
 
-  PW_LOG_INFO("RegisterFunction: name=%s, slot=%d",
-              name_str.c_str(), static_cast<int>(slot));
+  PW_LOG_INFO("RegisterFunction: name=%s, slot=%d", name_str.c_str(),
+              static_cast<int>(slot));
   PW_LOG_INFO("RegisterFunction: trampoline addr=0x%08x",
               reinterpret_cast<unsigned int>(trampoline_fn));
   PW_LOG_INFO("RegisterFunction: handler_set=%s",
@@ -273,10 +206,10 @@ pw::Status ParticleCloudBackend::RegisterFunction(std::string_view name,
   }
 
   // Register trampoline with Particle
-  // Type already matches p_user_function_int_str_t (pointer to user_function_int_str_t)
   bool success = spark_function(name_str.c_str(), trampoline_fn, nullptr);
 
-  PW_LOG_INFO("RegisterFunction: spark_function returned %s", success ? "true" : "false");
+  PW_LOG_INFO("RegisterFunction: spark_function returned %s",
+              success ? "true" : "false");
 
   if (!success) {
     PW_LOG_ERROR("Failed to register function %s", name_str.c_str());
@@ -333,7 +266,8 @@ pw::Status ParticleCloudBackend::DoRegisterVariable(
 
   bool success = spark_variable(name_str.c_str(), data, spark_type, nullptr);
 
-  PW_LOG_INFO("RegisterVariable: spark_variable returned %s", success ? "true" : "false");
+  PW_LOG_INFO("RegisterVariable: spark_variable returned %s",
+              success ? "true" : "false");
 
   if (!success) {
     PW_LOG_ERROR("Failed to register variable %s", name_str.c_str());
@@ -341,12 +275,12 @@ pw::Status ParticleCloudBackend::DoRegisterVariable(
   }
 
   // Store ownership of the variable container
-  // Convert unique_ptr to shared_ptr for easier storage
   variable_storage_[variable_count_] =
       std::shared_ptr<void>(storage.release(), storage.get_deleter());
   ++variable_count_;
 
-  PW_LOG_INFO("RegisterVariable: success, variable_count=%d", static_cast<int>(variable_count_));
+  PW_LOG_INFO("RegisterVariable: success, variable_count=%d",
+              static_cast<int>(variable_count_));
   return pw::OkStatus();
 }
 
@@ -366,10 +300,11 @@ EventReceiver ParticleCloudBackend::CreateSubscriptionReceiver() {
 }
 
 void ParticleCloudBackend::OnPublishComplete(int error,
-                                              const void* /*data*/,
-                                              void* callback_data,
-                                              void* /*reserved*/) {
-  PW_LOG_INFO("OnPublishComplete: error=%d, callback_data=%p", error, callback_data);
+                                             const void* /*data*/,
+                                             void* callback_data,
+                                             void* /*reserved*/) {
+  PW_LOG_INFO("OnPublishComplete: error=%d, callback_data=%p", error,
+              callback_data);
   auto* provider =
       static_cast<pw::async2::ValueProvider<pw::Status>*>(callback_data);
   if (provider) {
@@ -381,18 +316,13 @@ void ParticleCloudBackend::OnPublishComplete(int error,
 }
 
 void ParticleCloudBackend::OnEventReceived(const char* event_name,
-                                            const char* data) {
+                                           const char* data) {
   // This is called from the Particle system thread (same as application code).
   // We push events into the channel for the consumer to receive.
   PW_LOG_INFO("OnEventReceived: name=%s, data=%s",
-              event_name ? event_name : "(null)",
-              data ? data : "(null)");
+              event_name ? event_name : "(null)", data ? data : "(null)");
 
-  if (g_instance == nullptr) {
-    PW_LOG_ERROR("OnEventReceived: g_instance is null!");
-    return;
-  }
-  auto* self = g_instance;
+  auto& self = Instance();
 
   ReceivedEvent event;
   event.name = pw::InlineString<kMaxEventNameSize>(event_name);
@@ -402,31 +332,19 @@ void ParticleCloudBackend::OnEventReceived(const char* event_name,
   size_t copy_len = std::min(data_len, event.data.max_size());
   event.data.resize(copy_len);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  std::memcpy(event.data.data(),
-              reinterpret_cast<const std::byte*>(data),
+  std::memcpy(event.data.data(), reinterpret_cast<const std::byte*>(data),
               copy_len);
 
   event.content_type = ContentType::kText;
 
   // Push event into channel (non-blocking)
-  if (self->event_sender_.is_open()) {
-    auto status = self->event_sender_.TrySend(std::move(event));
-    PW_LOG_INFO("OnEventReceived: TrySend status=%d", static_cast<int>(status.code()));
+  if (self.event_sender_.is_open()) {
+    auto status = self.event_sender_.TrySend(std::move(event));
+    PW_LOG_INFO("OnEventReceived: TrySend status=%d",
+                static_cast<int>(status.code()));
   } else {
     PW_LOG_WARN("OnEventReceived: channel not open, event dropped");
   }
-}
-
-// Global instance
-ParticleCloudBackend g_particle_cloud_backend;
-
-}  // namespace
-
-CloudBackend& GetParticleCloudBackend() {
-  PW_LOG_INFO("GetParticleCloudBackend: returning instance at %p, g_instance=%p",
-              static_cast<void*>(&g_particle_cloud_backend),
-              static_cast<void*>(g_instance));
-  return g_particle_cloud_backend;
 }
 
 }  // namespace pb::cloud

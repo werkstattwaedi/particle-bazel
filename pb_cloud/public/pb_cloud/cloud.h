@@ -19,7 +19,7 @@
 ///
 /// // For production (P2), also include:
 /// // #include "pb_cloud/particle_cloud_backend.h"
-/// // auto& cloud = pb::cloud::GetParticleCloudBackend();
+/// // auto& cloud = pb::cloud::ParticleCloudBackend::Instance();
 /// @endcode
 
 #include "pb_cloud/cloud_backend.h"

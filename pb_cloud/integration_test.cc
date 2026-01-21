@@ -82,7 +82,7 @@ int ResetCounter(std::string_view) {
 }
 
 int PublishTestEvent(std::string_view arg) {
-  auto& cloud = pb::cloud::GetParticleCloudBackend();
+  auto& cloud = pb::cloud::ParticleCloudBackend::Instance();
 
   pw::InlineString<128> payload;
   if (arg.empty()) {
@@ -144,7 +144,7 @@ class PbCloudIntegrationTest : public ::testing::Test {
  protected:
   void SetUp() override {
     PW_LOG_INFO("=== PbCloudIntegrationTest::SetUp ===");
-    auto& cloud = pb::cloud::GetParticleCloudBackend();
+    auto& cloud = pb::cloud::ParticleCloudBackend::Instance();
 
     // Register variables
     g_counter_var = &cloud.RegisterVariable("counter", 0);
@@ -193,7 +193,7 @@ TEST_F(PbCloudIntegrationTest, ManualVerification) {
   PW_LOG_INFO("Cloud connected!");
 
   // Subscribe to events now that we're connected
-  auto& cloud = pb::cloud::GetParticleCloudBackend();
+  auto& cloud = pb::cloud::ParticleCloudBackend::Instance();
   g_event_receiver.emplace(cloud.Subscribe("pb_cloud_test/"));
   PW_LOG_INFO("Subscribed to pb_cloud_test/");
 

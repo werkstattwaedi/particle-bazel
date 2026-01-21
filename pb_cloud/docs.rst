@@ -89,7 +89,7 @@ Basic Setup with Dependency Injection
    };
 
    // Application wiring (P2):
-   auto& cloud = pb::cloud::GetParticleCloudBackend();
+   auto& cloud = pb::cloud::ParticleCloudBackend::Instance();
    MyComponent component(cloud);
 
 Publishing Events
