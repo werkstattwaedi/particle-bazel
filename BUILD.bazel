@@ -174,6 +174,15 @@ cc_library(
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
 )
 
+# mbedTLS headers from Device OS third-party
+# Provides crypto functions (AES, SHA, etc.) used by pb_crypto
+cc_library(
+    name = "mbedtls_headers",
+    hdrs = glob(["third_party/device-os/third_party/mbedtls/mbedtls/include/**/*.h"]),
+    includes = ["third_party/device-os/third_party/mbedtls/mbedtls/include"],
+    target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
+)
+
 # =============================================================================
 # Wiring Libraries (Private - Not Supported)
 # =============================================================================

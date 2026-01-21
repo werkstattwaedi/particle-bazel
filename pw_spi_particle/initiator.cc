@@ -29,8 +29,9 @@ hal_spi_interface_t ToHalInterface(ParticleSpiInitiator::Interface interface) {
 }
 
 // Convert pw::spi::Config to HAL SPI mode (0-3)
-uint8_t ToHalSpiMode(pw::spi::ClockPolarity polarity,
-                     pw::spi::ClockPhase phase) {
+uint8_t ToHalSpiMode(
+    pw::spi::ClockPolarity polarity, pw::spi::ClockPhase phase
+) {
   // SPI Mode mapping:
   // Mode 0: CPOL=0 (ActiveHigh), CPHA=0 (RisingEdge)
   // Mode 1: CPOL=0 (ActiveHigh), CPHA=1 (FallingEdge)
@@ -83,13 +84,16 @@ void (*ParticleSpiInitiator::GetDmaCallback(Interface interface))() {
   PW_UNREACHABLE;
 }
 
-ParticleSpiInitiator::ParticleSpiInitiator(Interface interface,
-                                           uint32_t clock_hz)
+ParticleSpiInitiator::ParticleSpiInitiator(
+    Interface interface, uint32_t clock_hz
+)
     : interface_(interface), clock_hz_(clock_hz) {
   const size_t index = InterfaceIndex(interface_);
-  PW_CHECK(active_instances_[index] == nullptr,
-           "SPI interface %zu already has an active initiator",
-           index);
+  PW_CHECK(
+      active_instances_[index] == nullptr,
+      "SPI interface %zu already has an active initiator",
+      index
+  );
   active_instances_[index] = this;
 }
 
@@ -115,8 +119,10 @@ pw::Status ParticleSpiInitiator::DoConfigure(const pw::spi::Config& config) {
   const int divider =
       hal_spi_get_clock_divider(hal_interface, clock_hz_, nullptr);
   if (divider < 0) {
-    PW_LOG_ERROR("Failed to calculate SPI clock divider for %u Hz",
-                 static_cast<unsigned>(clock_hz_));
+    PW_LOG_ERROR(
+        "Failed to calculate SPI clock divider for %u Hz",
+        static_cast<unsigned>(clock_hz_)
+    );
     return pw::Status::InvalidArgument();
   }
 
@@ -126,24 +132,28 @@ pw::Status ParticleSpiInitiator::DoConfigure(const pw::spi::Config& config) {
   const uint8_t spi_mode = ToHalSpiMode(config.polarity, config.phase);
 
   // Apply settings (set_default=0 means apply immediately)
-  const int32_t result = hal_spi_set_settings(hal_interface,
-                                              /*set_default=*/0,
-                                              static_cast<uint8_t>(divider),
-                                              bit_order,
-                                              spi_mode,
-                                              nullptr);
+  const int32_t result = hal_spi_set_settings(
+      hal_interface,
+      /*set_default=*/0,
+      static_cast<uint8_t>(divider),
+      bit_order,
+      spi_mode,
+      nullptr
+  );
 
   if (result != 0) {
-    PW_LOG_ERROR("hal_spi_set_settings failed with %d",
-                 static_cast<int>(result));
+    PW_LOG_ERROR(
+        "hal_spi_set_settings failed with %d", static_cast<int>(result)
+    );
     return pw::Status::Internal();
   }
 
   return pw::OkStatus();
 }
 
-pw::Status ParticleSpiInitiator::DoWriteRead(pw::ConstByteSpan write_buffer,
-                                             pw::ByteSpan read_buffer) {
+pw::Status ParticleSpiInitiator::DoWriteRead(
+    pw::ConstByteSpan write_buffer, pw::ByteSpan read_buffer
+) {
   if (!initialized_) {
     return pw::Status::FailedPrecondition();
   }
@@ -151,26 +161,22 @@ pw::Status ParticleSpiInitiator::DoWriteRead(pw::ConstByteSpan write_buffer,
   const hal_spi_interface_t hal_interface = ToHalInterface(interface_);
 
   // Determine transfer length (max of write and read)
-  const size_t transfer_len =
-      std::max(write_buffer.size(), read_buffer.size());
+  const size_t transfer_len = std::max(write_buffer.size(), read_buffer.size());
 
   if (transfer_len == 0) {
     return pw::OkStatus();
   }
 
-  // Drain any stale semaphore releases from previous timed-out transfers.
-  // This ensures we start with a clean state.
-  while (dma_complete_.try_acquire()) {
-  }
-
   // Start DMA transfer
   // Note: For write-only transfers (display), rx_buffer is nullptr
   // For read-only transfers, tx_buffer can be nullptr (will send 0x00)
-  hal_spi_transfer_dma(hal_interface,
-                       write_buffer.empty() ? nullptr : write_buffer.data(),
-                       read_buffer.empty() ? nullptr : read_buffer.data(),
-                       static_cast<uint32_t>(transfer_len),
-                       GetDmaCallback(interface_));
+  hal_spi_transfer_dma(
+      hal_interface,
+      write_buffer.empty() ? nullptr : write_buffer.data(),
+      read_buffer.empty() ? nullptr : read_buffer.data(),
+      static_cast<uint32_t>(transfer_len),
+      GetDmaCallback(interface_)
+  );
 
   // Calculate timeout based on transfer size and clock frequency.
   // Time = (bytes * 8 bits) / clock_hz, with 2x margin + 10ms minimum overhead.
@@ -179,11 +185,16 @@ pw::Status ParticleSpiInitiator::DoWriteRead(pw::ConstByteSpan write_buffer,
   const uint32_t timeout_ms =
       std::max<uint32_t>(transfer_time_us / 500, 10);  // 2x margin
   const auto dma_timeout = pw::chrono::SystemClock::for_at_least(
-      std::chrono::milliseconds(timeout_ms));
+      std::chrono::milliseconds(timeout_ms)
+  );
 
   if (!dma_complete_.try_acquire_for(dma_timeout)) {
     PW_LOG_ERROR("SPI DMA transfer timed out");
     hal_spi_transfer_dma_cancel(hal_interface);
+
+    // Drain any stale semaphore releases from previous timed-out transfers.
+    dma_complete_.try_acquire();
+
     // Late callback will be drained at start of next transfer
     return pw::Status::DeadlineExceeded();
   }
