@@ -1,0 +1,11 @@
+{
+  "name": "particle_tools",
+  "version": "1.0.0",
+  "private": true,
+  "devDependencies": {
+    "particle-cli": "^3.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
+}

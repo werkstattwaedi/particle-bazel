@@ -17,9 +17,36 @@ git_override(
 # Standard dependencies
 bazel_dep(name = "platforms", version = "1.0.0")
 bazel_dep(name = "rules_cc", version = "0.2.4")
+bazel_dep(name = "rules_python", version = "0.40.0")
+
+# Protocol Buffers (for RPC proto definitions)
+bazel_dep(name = "protobuf", version = "29.0", repo_name = "com_google_protobuf")
 
 # Crypto library (for pb_crypto host backend)
 bazel_dep(name = "mbedtls", version = "3.6.0")
+
+# JavaScript toolchain for particle-cli
+bazel_dep(name = "aspect_rules_js", version = "2.4.0")
+
+# Python dependencies for particle tools
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "particle_pip",
+    python_version = "3.11",
+    requirements_lock = "//tools:requirements_lock.txt",
+)
+use_repo(pip, "particle_pip")
+
+# Particle CLI via npm (hermetic)
+npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
+npm.npm_translate_lock(
+    name = "npm_particle_cli",
+    pnpm_lock = "//tools:pnpm-lock.yaml",
+    bins = {
+        "particle-cli": ["particle=./dist/cli/index.js"],
+    },
+)
+use_repo(npm, "npm_particle_cli")
 
 # Use ARM GCC 10.2.1 toolchain (matching Particle's toolchain version)
 arm_toolchain = use_extension("//toolchain:extensions.bzl", "arm_toolchain")

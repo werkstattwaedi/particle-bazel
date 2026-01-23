@@ -374,21 +374,25 @@ def particle_flash_binary(
         **kwargs):
     """Creates a target to flash firmware to a Particle device.
 
+    Usage: bazel run //path/to:{name}
+
     Args:
         name: Target name.
-        firmware: Label of the firmware binary (.bin or .elf) to flash.
-        **kwargs: Additional arguments passed to sh_binary.
+        firmware: Label of the firmware binary (.bin) to flash.
+        **kwargs: Additional arguments (visibility, testonly).
     """
-    native.sh_binary(
+    native.py_binary(
         name = name,
-        srcs = ["@particle_bazel//rules:flash.sh"],
-        data = [
-            firmware,
-            "@particle_bazel//rules:wait_for_device.sh",
+        srcs = ["@particle_bazel//tools:scripts/flash_firmware.py"],
+        main = "@particle_bazel//tools:scripts/flash_firmware.py",
+        data = [firmware],
+        deps = [
+            "@particle_bazel//tools:particle_cli_wrapper",
+            "@particle_bazel//tools:particle_usb",
         ],
         args = ["$(location " + firmware + ")"],
-        tags = ["local"],  # Bypass sandbox to access particle credentials
-        **kwargs
+        tags = ["local"],  # Bypass sandbox to access USB devices
+        **{k: v for k, v in kwargs.items() if k in ["visibility", "testonly"]}
     )
 
 def particle_firmware(
