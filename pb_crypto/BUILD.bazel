@@ -64,7 +64,9 @@ cc_library(
     ],
 )
 
-# Particle backend (for P2 device with potential HW acceleration)
+
+# Particle backend (for P2 device)
+# Uses mbedtls_embedded since Device OS doesn't export crypto via dynalib.
 cc_library(
     name = "pb_crypto_particle_impl",
     srcs = ["pb_crypto_particle.cc"],
@@ -73,7 +75,7 @@ cc_library(
     deps = [
         ":pb_crypto_ascon",
         "//:device_os_headers",
-        "//:mbedtls_headers",
+        "//:mbedtls_embedded",
         "@pigweed//pw_assert:check",
         "@pigweed//pw_bytes",
         "@pigweed//pw_status",

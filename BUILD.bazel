@@ -183,6 +183,36 @@ cc_library(
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
 )
 
+
+# Minimal mbedTLS for embedded targets (P2/RTL872x)
+# Only includes AES-CBC and AES-CMAC needed for NTAG424 authentication.
+# Device OS doesn't export crypto via dynalib, so we build it ourselves.
+cc_library(
+    name = "mbedtls_embedded",
+    srcs = [
+        # Core AES implementation
+        "third_party/device-os/third_party/mbedtls/mbedtls/library/aes.c",
+        # Cipher abstraction (required for CMAC)
+        "third_party/device-os/third_party/mbedtls/mbedtls/library/cipher.c",
+        "third_party/device-os/third_party/mbedtls/mbedtls/library/cipher_wrap.c",
+        # CMAC implementation
+        "third_party/device-os/third_party/mbedtls/mbedtls/library/cmac.c",
+        # Platform utilities
+        "third_party/device-os/third_party/mbedtls/mbedtls/library/platform_util.c",
+        "third_party/device-os/third_party/mbedtls/mbedtls/library/platform.c",
+    ],
+    hdrs = ["mbedtls_config.h"],
+    copts = DEVICE_OS_COPTS + [
+        "-DMBEDTLS_CONFIG_FILE=\\\"mbedtls_config.h\\\"",
+        "-w",  # Suppress warnings from mbedtls code
+    ],
+    includes = [
+        ".",  # For mbedtls_config.h
+    ],
+    deps = [":mbedtls_headers"],
+    target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
+)
+
 # =============================================================================
 # Wiring Libraries (Private - Not Supported)
 # =============================================================================
