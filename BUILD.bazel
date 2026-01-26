@@ -43,6 +43,9 @@ DEVICE_OS_DEFINES = [
     "RELEASE_BUILD",  # Suppress "Defaulting to Release Build" warning
     "__FPU_PRESENT=1",  # Cortex-M33 has FPU
     "ARM_CPU_CORTEX_M33",  # Select correct CMSIS header
+    # C++20 libstdc++ threading support - needed before any stdlib headers
+    "_GLIBCXX_HAS_GTHREADS",
+    "_GLIBCXX_USE_SCHED_YIELD",
 ]
 
 # Common compiler flags for Device OS (LTO for compile)
@@ -81,6 +84,7 @@ DEVICE_OS_INCLUDES = [
     "third_party/device-os/hal/src/rtl872x/posix",
     "third_party/device-os/hal/src/portable",
     "third_party/device-os/hal/src/portable/FreeRTOS",
+    "third_party/device-os/hal/src/portable/FreeRTOS/bits",  # For gthr-default.h (C++20)
     "third_party/device-os/hal/network",
     "third_party/device-os/hal/network/api",
     "third_party/device-os/hal/network/lwip",

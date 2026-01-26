@@ -13,6 +13,7 @@ cc_library(
     name = "threads",
     srcs = ["threads.cc"],
     deps = [
+        "//:device_os_headers",
         "@pigweed//pw_thread:sleep",
     ],
     # Must be alwayslink so our implementation is included

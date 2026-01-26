@@ -17,8 +17,8 @@ platform(
         "@pigweed//pw_build/constraints/arm:cortex-m33",
     ],
     flags = flags_from_dict({
-        # C++ standard (C++20 has incompatibilities with gthr-default.h)
-        "@pigweed//pw_toolchain/cc:cxx_standard": "17",
+        # C++ standard
+        "@pigweed//pw_toolchain/cc:cxx_standard": "20",
         # Assert backends (use pw_assert_basic with custom handler)
         "@pigweed//pw_assert:check_backend": "@pigweed//pw_assert_basic",
         "@pigweed//pw_assert:check_backend_impl": "@pigweed//pw_assert_basic:impl",

@@ -27,11 +27,16 @@ common --host_per_file_copt=external/.*,.*\.pb\.cc@-w
 # Platform configurations
 # ============================================
 
-# Use C++17 globally to match Particle Device OS and Pigweed requirements
-build --@pigweed//pw_toolchain/cc:cxx_standard=17
+# Use C++20 globally (dynalib boundary is C-linkage, safe for C++20)
+build --@pigweed//pw_toolchain/cc:cxx_standard=20
 
 # Particle P2 firmware build (Cortex-M33)
 build:p2 --platforms=@particle_bazel//platforms/p2:particle_p2
+
+# C++20 libstdc++ threading support - must be defined before any stdlib headers
+# This enables std::__detail::__thread_relax and atomic wait support
+build:p2 --cxxopt=-D_GLIBCXX_HAS_GTHREADS
+build:p2 --cxxopt=-D_GLIBCXX_USE_SCHED_YIELD
 
 # Pigweed backends for embedded target
 # Note: Most backends are configured in platform definitions, not here.
