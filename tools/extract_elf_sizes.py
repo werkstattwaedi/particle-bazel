@@ -74,9 +74,13 @@ def align_4k(value: int) -> int:
 
 
 def align_8(value: int) -> int:
-    """Align value up to 8-byte boundary with minimum padding."""
-    # Add 8 bytes padding for linker alignment slack, then align to 8
-    return ((value + 15) // 8) * 8
+    """Align value up to 8-byte boundary with safety margin.
+
+    Add 64 bytes slack to account for linker alignment variance between
+    Pass 1 and Pass 2. The linker may align sections differently when
+    the memory region size changes, causing small size differences.
+    """
+    return ((value + 64 + 7) // 8) * 8
 
 
 def main():
