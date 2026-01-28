@@ -21,8 +21,12 @@ Usage
 
    #include "pb_uart/async_uart.h"
 
+   // Provide buffers (must be 32-byte aligned for DMA on RTL872x)
+   alignas(32) static std::byte rx_buf[265];  // PN532 max frame ~262 bytes
+   alignas(32) static std::byte tx_buf[265];
+
    // Create and initialize
-   pb::AsyncUart uart(HAL_USART_SERIAL2);
+   pb::AsyncUart uart(HAL_USART_SERIAL2, rx_buf, tx_buf);
    PW_TRY(uart.Init(115200));
 
    // Synchronous write

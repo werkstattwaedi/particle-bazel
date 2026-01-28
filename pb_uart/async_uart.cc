@@ -71,15 +71,21 @@ pw::async2::Poll<pw::StatusWithSize> ReadFuture::Pend(pw::async2::Context& cx) {
 // AsyncUart implementation
 // ---------------------------------------------------------------------------
 
-AsyncUart::AsyncUart(hal_usart_interface_t serial, uint32_t poll_interval_ms)
-    : serial_(serial), poll_interval_ms_(poll_interval_ms) {
+AsyncUart::AsyncUart(hal_usart_interface_t serial,
+                     pw::ByteSpan rx_buffer,
+                     pw::ByteSpan tx_buffer,
+                     uint32_t poll_interval_ms)
+    : serial_(serial),
+      poll_interval_ms_(poll_interval_ms),
+      rx_buffer_(rx_buffer),
+      tx_buffer_(tx_buffer) {
   // Initialize buffers in constructor (matching Wiring's USARTSerial)
   hal_usart_buffer_config_t config = {
       .size = sizeof(hal_usart_buffer_config_t),
-      .rx_buffer = rx_buffer_,
-      .rx_buffer_size = kBufferSize,
-      .tx_buffer = tx_buffer_,
-      .tx_buffer_size = kBufferSize,
+      .rx_buffer = reinterpret_cast<uint8_t*>(rx_buffer_.data()),
+      .rx_buffer_size = static_cast<uint16_t>(rx_buffer_.size()),
+      .tx_buffer = reinterpret_cast<uint8_t*>(tx_buffer_.data()),
+      .tx_buffer_size = static_cast<uint16_t>(tx_buffer_.size()),
   };
   int result = hal_usart_init_ex(serial_, &config, nullptr);
   PW_ASSERT(result == 0);
@@ -149,15 +155,27 @@ ReadFuture AsyncUart::ReadWithTimeout(pw::ByteSpan buffer,
 }
 
 pw::Status AsyncUart::Write(pw::ConstByteSpan data) {
+  // Check if there's enough space in TX buffer (non-blocking write)
+  int32_t available = hal_usart_available_data_for_write(serial_);
+  if (available < 0 || static_cast<size_t>(available) < data.size()) {
+    // Not enough space - caller should retry or handle error
+    return pw::Status::ResourceExhausted();
+  }
+
   for (auto b : data) {
     hal_usart_write(serial_, static_cast<uint8_t>(b));
   }
-  // Flush TX buffer to ensure bytes are actually transmitted
-  hal_usart_flush(serial_);
+  // Don't flush - let TX buffer drain asynchronously
   return pw::OkStatus();
 }
 
-void AsyncUart::Flush() { hal_usart_flush(serial_); }
+void AsyncUart::Drain() {
+  // Single-pass drain - read all currently available bytes.
+  // If caller needs to catch in-flight bytes, they should use async delays.
+  while (hal_usart_available(serial_) > 0) {
+    (void)hal_usart_read(serial_);
+  }
+}
 
 void AsyncUart::PollingTaskLoop() {
   PW_LOG_INFO("PollingTaskLoop: started");

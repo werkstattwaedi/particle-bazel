@@ -21,6 +21,7 @@
 #include "pw_async2/coro_or_else_task.h"
 #include "pw_async2/system_time_provider.h"
 #include "pw_bytes/array.h"
+#include "pw_bytes/span.h"
 #include "pw_chrono/system_clock.h"
 #include "pw_log/log.h"
 #include "pw_unit_test/framework.h"
@@ -41,7 +42,11 @@ pw::allocator::test::AllocatorForTest<4096> test_allocator;
 // Single UART instance shared across all tests.
 // We cannot use per-test Init/Deinit because Deinit hangs (see async_uart.cc).
 pb::AsyncUart& GetUart() {
-  static pb::AsyncUart uart(HAL_USART_SERIAL2);
+  // UART buffers (128 bytes is plenty for loopback tests)
+  // Must be 32-byte aligned for DMA on RTL872x
+  alignas(32) static std::byte rx_buf[128];
+  alignas(32) static std::byte tx_buf[128];
+  static pb::AsyncUart uart(HAL_USART_SERIAL2, rx_buf, tx_buf);
   static bool initialized = false;
   if (!initialized) {
     auto status = uart.Init(kBaudRate);

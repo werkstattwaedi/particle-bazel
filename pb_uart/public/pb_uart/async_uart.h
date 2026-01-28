@@ -77,7 +77,10 @@ class ReadFuture {
 ///
 /// Usage:
 /// @code
-///   AsyncUart uart(HAL_USART_SERIAL2);
+///   // Caller provides buffers - must be 32-byte aligned for DMA on RTL872x
+///   alignas(32) static uint8_t rx_buf[265];  // PN532 max frame ~265 bytes
+///   alignas(32) static uint8_t tx_buf[265];
+///   AsyncUart uart(HAL_USART_SERIAL2, pw::ByteSpan(rx_buf), pw::ByteSpan(tx_buf));
 ///   PW_TRY(uart.Init(115200));
 ///
 ///   // In a coroutine:
@@ -87,11 +90,19 @@ class ReadFuture {
 /// @endcode
 class AsyncUart {
  public:
-  /// Construct an async UART wrapper.
+  /// Construct an async UART wrapper with caller-provided buffers.
+  ///
   /// @param serial HAL UART interface (e.g., HAL_USART_SERIAL2)
+  /// @param rx_buffer Receive buffer (must be 32-byte aligned for DMA)
+  /// @param tx_buffer Transmit buffer (must be 32-byte aligned for DMA)
   /// @param poll_interval_ms How often to check for data (default 1ms)
-  explicit AsyncUart(hal_usart_interface_t serial,
-                     uint32_t poll_interval_ms = 1);
+  ///
+  /// @note Buffers must remain valid for the lifetime of the AsyncUart.
+  ///       Size should match the largest expected frame (e.g., 265 for PN532).
+  AsyncUart(hal_usart_interface_t serial,
+            pw::ByteSpan rx_buffer,
+            pw::ByteSpan tx_buffer,
+            uint32_t poll_interval_ms = 1);
 
   ~AsyncUart();
 
@@ -142,11 +153,17 @@ class AsyncUart {
 
   /// Synchronous write (TX is already fast via HAL ring buffer).
   /// @param data Data to write
-  /// @return OkStatus on success
+  /// @return OkStatus on success, ResourceExhausted if TX buffer full
   pw::Status Write(pw::ConstByteSpan data);
 
-  /// Flush TX buffer - wait for all bytes to be transmitted.
-  void Flush();
+  /// Discard all currently pending receive data (single pass, non-blocking).
+  ///
+  /// Reads and discards all bytes currently in the HAL receive buffer.
+  /// Does not wait for in-flight bytes - if needed, the caller should
+  /// use async delays between multiple Drain() calls.
+  ///
+  /// @warning Do not call while a Read/ReadWithTimeout future is pending.
+  void Drain();
 
  private:
   friend class ReadFuture;
@@ -162,11 +179,9 @@ class AsyncUart {
   hal_usart_interface_t serial_;
   uint32_t poll_interval_ms_;
 
-  // Buffer storage - sized to match SERIAL_BUFFER_SIZE (64 on P2)
-  // Must be 32-byte aligned for RTL872x DMA operations
-  static constexpr size_t kBufferSize = 64;
-  alignas(32) uint8_t rx_buffer_[kBufferSize]{};
-  alignas(32) uint8_t tx_buffer_[kBufferSize]{};
+  // Caller-provided buffers (must be 32-byte aligned for RTL872x DMA)
+  pw::ByteSpan rx_buffer_;
+  pw::ByteSpan tx_buffer_;
 
   // Background polling task
   std::atomic<bool> running_{false};
