@@ -5,6 +5,7 @@
 
 #include "concurrent_hal.h"
 #include "pw_assert/check.h"
+#include "pw_preprocessor/compiler.h"
 #include "pw_thread_particle/config.h"
 #include "pw_thread_particle/context.h"
 #include "pw_thread_particle/options.h"
@@ -20,16 +21,35 @@ void Context::ThreadEntryPoint(void* void_context_ptr) {
   context.fn_();
   context.fn_ = nullptr;
 
-  // Mark the thread as done.
-  context.set_thread_done();
+  // Use a critical section to guard against join() and detach().
+  // This prevents a race where detach() could delete the context while we're
+  // still accessing it.
+  os_thread_scheduling(false, nullptr);
 
-  // If detached, clean up. Otherwise, wait for join.
   if (context.detached()) {
+    // Thread was detached before we finished. We're responsible for cleanup.
+    // Clear handle so the context can potentially be reused.
+    context.set_thread_handle(nullptr);
+
+    // Resume scheduler before cleanup and exit.
+    os_thread_scheduling(true, nullptr);
+
     if (context.dynamically_allocated_) {
       delete &context;
     }
+
+    // Exit the thread. This never returns.
+    os_thread_exit(nullptr);
+    PW_UNREACHABLE;
   }
-  // Thread exits naturally - os_thread_join will return for the joiner.
+
+  // Thread finished before detach/join. Defer cleanup to the joiner/detacher.
+  context.set_thread_done();
+  os_thread_scheduling(true, nullptr);
+
+  // Exit the thread. This signals to os_thread_join that we're done.
+  os_thread_exit(nullptr);
+  PW_UNREACHABLE;
 }
 
 void Context::TerminateThread(Context& context) {
@@ -99,9 +119,14 @@ Thread::Thread(const thread::Options& facade_options, Function<void()>&& entry)
 void Thread::detach() {
   PW_CHECK(joinable());
 
+  // Use a critical section to safely check thread_done and set detached.
+  // This prevents a race with ThreadEntryPoint.
+  os_thread_scheduling(false, nullptr);
   native_type_->set_detached();
+  const bool thread_done = native_type_->thread_done();
+  os_thread_scheduling(true, nullptr);
 
-  if (native_type_->thread_done()) {
+  if (thread_done) {
     // The task finished before we invoked detach, clean up the thread.
     Context::TerminateThread(*native_type_);
   }

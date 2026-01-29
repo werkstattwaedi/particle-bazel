@@ -18,6 +18,7 @@ constexpr NativeOptions GetNativeOptions(NativeContext& context,
   NativeOptions options;
   options.set_name(attrs.name());
   options.set_priority(attrs.priority().native());
+  options.set_stack_size(attrs.stack_size_bytes());
   options.set_static_context(context);
   return options;
 }

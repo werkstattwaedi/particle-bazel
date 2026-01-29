@@ -4,6 +4,7 @@
 """Bazel rules for Particle on-device unit tests using pw_unit_test."""
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("//rules:particle_firmware.bzl", "particle_cc_binary", "particle_firmware_binary")
 
 def particle_cc_test(
@@ -86,7 +87,7 @@ def _particle_test_flash_binary(
         firmware,
         **kwargs):
     """Creates a target that flashes test firmware and opens serial monitor."""
-    native.sh_binary(
+    sh_binary(
         name = name,
         srcs = ["@particle_bazel//rules:flash_test.sh"],
         data = [

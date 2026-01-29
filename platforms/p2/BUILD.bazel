@@ -36,6 +36,8 @@ platform(
         "@pigweed//pw_thread:yield_backend": "@particle_bazel//pw_thread_particle:yield",
         "@pigweed//pw_thread:sleep_backend": "@particle_bazel//pw_thread_particle:sleep",
         "@pigweed//pw_thread:thread_backend": "@particle_bazel//pw_thread_particle:thread",
+        "@pigweed//pw_thread:thread_creation_backend": "@particle_bazel//pw_thread_particle:thread_context",
+        "@pigweed//pw_thread:test_thread_context_backend": "@particle_bazel//pw_thread_particle:test_thread_context",
         # Sync backends
         "@pigweed//pw_sync:mutex_backend": "@particle_bazel//pw_sync_particle:mutex",
         "@pigweed//pw_sync:timed_mutex_backend": "@particle_bazel//pw_sync_particle:timed_mutex",

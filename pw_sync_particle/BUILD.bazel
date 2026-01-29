@@ -126,7 +126,9 @@ cc_library(
         "public_overrides/pw_sync_backend/thread_notification_inline.h",
         "public_overrides/pw_sync_backend/thread_notification_native.h",
     ],
-    implementation_deps = ["@pigweed//pw_assert:check"],
+    implementation_deps = [
+        "@pigweed//pw_assert:check",
+    ],
     includes = [
         "public",
         "public_overrides",
@@ -214,20 +216,19 @@ particle_cc_test(
     ],
 )
 
-# TODO: timed_mutex uses os_mutex_lock_timeout which isn't in the dynalib
-# particle_cc_test(
-#     name = "timed_mutex_facade_test",
-#     srcs = [
-#         "timed_mutex_facade_test_stubs.cc",
-#         "@pigweed//pw_sync:timed_mutex_facade_test.cc",
-#     ],
-#     deps = [
-#         "@pigweed//pw_chrono:system_clock",
-#         "@pigweed//pw_preprocessor",
-#         "@pigweed//pw_sync:timed_borrow_testing",
-#         "@pigweed//pw_sync:timed_mutex",
-#     ],
-# )
+particle_cc_test(
+    name = "timed_mutex_facade_test",
+    srcs = [
+        "timed_mutex_facade_test_stubs.cc",
+        "@pigweed//pw_sync:timed_mutex_facade_test.cc",
+    ],
+    deps = [
+        "@pigweed//pw_chrono:system_clock",
+        "@pigweed//pw_preprocessor",
+        "@pigweed//pw_sync:timed_borrow_testing",
+        "@pigweed//pw_sync:timed_mutex",
+    ],
+)
 
 particle_cc_test(
     name = "interrupt_spin_lock_facade_test",
@@ -242,26 +243,25 @@ particle_cc_test(
     ],
 )
 
-# TODO: These tests require pw_thread:test_thread_context_backend which isn't implemented
-# particle_cc_test(
-#     name = "thread_notification_facade_test",
-#     srcs = [
-#         "@pigweed//pw_sync:thread_notification_facade_test.cc",
-#     ],
-#     deps = [
-#         "@pigweed//pw_sync:thread_notification",
-#         "@pigweed//pw_sync:threaded_testing",
-#     ],
-# )
-#
-# particle_cc_test(
-#     name = "timed_thread_notification_facade_test",
-#     srcs = [
-#         "@pigweed//pw_sync:timed_thread_notification_facade_test.cc",
-#     ],
-#     deps = [
-#         "@pigweed//pw_chrono:system_clock",
-#         "@pigweed//pw_sync:timed_thread_notification",
-#         "@pigweed//pw_sync:timed_threaded_testing",
-#     ],
-# )
+particle_cc_test(
+    name = "thread_notification_facade_test",
+    srcs = [
+        "@pigweed//pw_sync:thread_notification_facade_test.cc",
+    ],
+    deps = [
+        "@pigweed//pw_sync:thread_notification",
+        "@pigweed//pw_sync:threaded_testing",
+    ],
+)
+
+particle_cc_test(
+    name = "timed_thread_notification_facade_test",
+    srcs = [
+        "@pigweed//pw_sync:timed_thread_notification_facade_test.cc",
+    ],
+    deps = [
+        "@pigweed//pw_chrono:system_clock",
+        "@pigweed//pw_sync:timed_thread_notification",
+        "@pigweed//pw_sync:timed_threaded_testing",
+    ],
+)

@@ -9,7 +9,7 @@ boundaries, matching Particle's Make-based build system behavior.
 
 load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain", "use_cpp_toolchain")
-load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@pigweed//pw_build:binary_tools.bzl", "pw_elf_to_bin")
@@ -292,7 +292,7 @@ def particle_cc_binary(
     """
     # Create a library with the firmware sources
     lib_name = name + "_lib"
-    native.cc_library(
+    cc_library(
         name = lib_name,
         srcs = srcs,
         deps = deps + [

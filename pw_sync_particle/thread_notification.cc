@@ -32,7 +32,8 @@ void ThreadNotification::acquire() {
 void ThreadNotification::release() {
   EnsureInitialized(native_type_);
 
-  // Give the semaphore (signal the waiting thread)
+  // Give the semaphore (signal the waiting thread).
+  // Note: Returns non-zero if semaphore is already at max (1), which is fine.
   os_semaphore_give(native_type_.semaphore, false);  // not from ISR
 }
 

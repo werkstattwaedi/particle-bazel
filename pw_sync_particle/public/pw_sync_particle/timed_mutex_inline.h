@@ -1,7 +1,10 @@
 // Copyright Offene Werkstatt Wädenswil
 // SPDX-License-Identifier: MIT
 //
-// pw_sync timed_mutex backend inline implementations for Particle Device OS
+// pw_sync timed_mutex backend inline implementations for Particle Device OS.
+//
+// TimedMutex inherits from Mutex, so only try_lock_until needs to be defined
+// here. try_lock_for is implemented in timed_mutex.cc.
 
 #pragma once
 
