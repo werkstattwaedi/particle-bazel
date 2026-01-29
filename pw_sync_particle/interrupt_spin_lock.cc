@@ -14,8 +14,18 @@ void InterruptSpinLock::lock() {
 }
 
 bool InterruptSpinLock::try_lock() {
-  // For a spin lock with interrupts disabled, try_lock behaves like lock.
-  lock();
+  // Disable interrupts first to safely check the lock state.
+  int saved = HAL_disable_irq();
+
+  if (native_type_.locked) {
+    // Already locked, restore interrupts and return failure.
+    HAL_enable_irq(saved);
+    return false;
+  }
+
+  // Not locked, acquire the lock.
+  native_type_.saved_state = saved;
+  native_type_.locked = true;
   return true;
 }
 

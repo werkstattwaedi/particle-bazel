@@ -35,11 +35,11 @@ bool TimedThreadNotification::try_acquire_until(
     return result == 0;
   }
 
-  // Calculate timeout in milliseconds
+  // Calculate timeout in milliseconds, rounding UP to ensure we wait at least
+  // as long as requested.
   const auto timeout_duration = deadline - now;
   const int64_t timeout_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(timeout_duration)
-          .count();
+      std::chrono::ceil<std::chrono::milliseconds>(timeout_duration).count();
 
   // Clamp to valid range
   constexpr int64_t kMaxTimeoutMs =

@@ -16,10 +16,11 @@ bool TimedMutex::try_lock_for(SystemClock::duration timeout) {
     return try_lock();
   }
 
-  // Convert duration to milliseconds for Device OS API.
-  // Device OS uses system_tick_t which is milliseconds.
+  // Convert duration to milliseconds for Device OS API, rounding UP to ensure
+  // we wait at least as long as requested. Device OS uses system_tick_t which
+  // is milliseconds.
   const int64_t timeout_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
+      std::chrono::ceil<std::chrono::milliseconds>(timeout).count();
 
   // Handle timeouts that exceed the max value for system_tick_t.
   // CONCURRENT_WAIT_FOREVER is (system_tick_t)-1, so we need to stay below that.

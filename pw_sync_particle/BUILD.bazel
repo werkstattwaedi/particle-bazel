@@ -4,6 +4,7 @@
 # pw_sync backend for Particle Device OS
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//rules:particle_test.bzl", "particle_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -108,6 +109,7 @@ cc_library(
     deps = [
         "//:device_os_headers",
         "//:hal_dynalib",
+        "@pigweed//pw_assert:assert",
         "@pigweed//pw_assert:check",
         "@pigweed//pw_chrono:system_clock",
         "@pigweed//pw_sync:counting_semaphore.facade",
@@ -159,3 +161,107 @@ cc_library(
     ],
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],
 )
+
+# =============================================================================
+# Facade Tests
+# =============================================================================
+# These tests verify that pw_sync_particle backends behave correctly.
+# They use the Pigweed facade test sources and run on-device.
+#
+# The particle backends use C++ headers that are not C-compatible, so we
+# provide C++ implementations of the C API test wrappers (facade_test_stubs.cc)
+# instead of using the original C test files.
+#
+# Build: bazel build --config=p2 //pw_sync_particle:binary_semaphore_facade_test
+# Flash: bazel run --config=p2 //pw_sync_particle:binary_semaphore_facade_test_flash
+
+particle_cc_test(
+    name = "binary_semaphore_facade_test",
+    srcs = [
+        "binary_semaphore_facade_test_stubs.cc",
+        "@pigweed//pw_sync:binary_semaphore_facade_test.cc",
+    ],
+    deps = [
+        "@pigweed//pw_chrono:system_clock",
+        "@pigweed//pw_preprocessor",
+        "@pigweed//pw_sync:binary_semaphore",
+    ],
+)
+
+particle_cc_test(
+    name = "counting_semaphore_facade_test",
+    srcs = [
+        "counting_semaphore_facade_test_stubs.cc",
+        "@pigweed//pw_sync:counting_semaphore_facade_test.cc",
+    ],
+    deps = [
+        "@pigweed//pw_chrono:system_clock",
+        "@pigweed//pw_preprocessor",
+        "@pigweed//pw_sync:counting_semaphore",
+    ],
+)
+
+particle_cc_test(
+    name = "mutex_facade_test",
+    srcs = [
+        "mutex_facade_test_stubs.cc",
+        "@pigweed//pw_sync:mutex_facade_test.cc",
+    ],
+    deps = [
+        "@pigweed//pw_preprocessor",
+        "@pigweed//pw_sync:borrow_testing",
+        "@pigweed//pw_sync:mutex",
+    ],
+)
+
+# TODO: timed_mutex uses os_mutex_lock_timeout which isn't in the dynalib
+# particle_cc_test(
+#     name = "timed_mutex_facade_test",
+#     srcs = [
+#         "timed_mutex_facade_test_stubs.cc",
+#         "@pigweed//pw_sync:timed_mutex_facade_test.cc",
+#     ],
+#     deps = [
+#         "@pigweed//pw_chrono:system_clock",
+#         "@pigweed//pw_preprocessor",
+#         "@pigweed//pw_sync:timed_borrow_testing",
+#         "@pigweed//pw_sync:timed_mutex",
+#     ],
+# )
+
+particle_cc_test(
+    name = "interrupt_spin_lock_facade_test",
+    srcs = [
+        "interrupt_spin_lock_facade_test_stubs.cc",
+        "@pigweed//pw_sync:interrupt_spin_lock_facade_test.cc",
+    ],
+    deps = [
+        "@pigweed//pw_preprocessor",
+        "@pigweed//pw_sync:borrow_testing",
+        "@pigweed//pw_sync:interrupt_spin_lock",
+    ],
+)
+
+# TODO: These tests require pw_thread:test_thread_context_backend which isn't implemented
+# particle_cc_test(
+#     name = "thread_notification_facade_test",
+#     srcs = [
+#         "@pigweed//pw_sync:thread_notification_facade_test.cc",
+#     ],
+#     deps = [
+#         "@pigweed//pw_sync:thread_notification",
+#         "@pigweed//pw_sync:threaded_testing",
+#     ],
+# )
+#
+# particle_cc_test(
+#     name = "timed_thread_notification_facade_test",
+#     srcs = [
+#         "@pigweed//pw_sync:timed_thread_notification_facade_test.cc",
+#     ],
+#     deps = [
+#         "@pigweed//pw_chrono:system_clock",
+#         "@pigweed//pw_sync:timed_thread_notification",
+#         "@pigweed//pw_sync:timed_threaded_testing",
+#     ],
+# )

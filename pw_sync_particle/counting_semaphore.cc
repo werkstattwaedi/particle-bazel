@@ -25,9 +25,10 @@ bool CountingSemaphore::try_acquire_for(SystemClock::duration timeout) {
     return try_acquire();
   }
 
-  // Convert duration to milliseconds for Device OS API.
+  // Convert duration to milliseconds for Device OS API, rounding UP to ensure
+  // we wait at least as long as requested.
   const int64_t timeout_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
+      std::chrono::ceil<std::chrono::milliseconds>(timeout).count();
 
   // Handle timeouts that exceed the max value for system_tick_t.
   constexpr int64_t kMaxTimeoutMs =

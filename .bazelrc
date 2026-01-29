@@ -50,7 +50,12 @@ build:p2 --@pigweed//pw_chrono:system_clock_backend=@particle_bazel//pw_chrono_p
 
 # Sync backends using Particle HAL concurrent functions
 build:p2 --@pigweed//pw_sync:mutex_backend=@particle_bazel//pw_sync_particle:mutex
+build:p2 --@pigweed//pw_sync:timed_mutex_backend=@particle_bazel//pw_sync_particle:timed_mutex
 build:p2 --@pigweed//pw_sync:binary_semaphore_backend=@particle_bazel//pw_sync_particle:binary_semaphore
+build:p2 --@pigweed//pw_sync:counting_semaphore_backend=@particle_bazel//pw_sync_particle:counting_semaphore
+build:p2 --@pigweed//pw_sync:interrupt_spin_lock_backend=@particle_bazel//pw_sync_particle:interrupt_spin_lock
+build:p2 --@pigweed//pw_sync:thread_notification_backend=@particle_bazel//pw_sync_particle:thread_notification
+build:p2 --@pigweed//pw_sync:timed_thread_notification_backend=@particle_bazel//pw_sync_particle:timed_thread_notification
 
 # Thread backends using Particle HAL concurrent functions
 build:p2 --@pigweed//pw_thread:id_backend=@particle_bazel//pw_thread_particle:id
