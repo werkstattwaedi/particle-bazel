@@ -66,7 +66,7 @@ cc_library(
 
 
 # Particle backend (for P2 device)
-# Uses mbedtls_embedded since Device OS doesn't export crypto via dynalib.
+# Uses mbedtls_embedded (built from Device OS sources) for AES-CBC and AES-CMAC.
 cc_library(
     name = "pb_crypto_particle_impl",
     srcs = ["pb_crypto_particle.cc"],
@@ -74,9 +74,7 @@ cc_library(
     includes = ["public"],
     deps = [
         ":pb_crypto_ascon",
-        "//:device_os_headers",
         "//:mbedtls_embedded",
-        "@pigweed//pw_assert:check",
         "@pigweed//pw_bytes",
         "@pigweed//pw_status",
     ],
@@ -90,5 +88,19 @@ pw_cc_test(
     deps = [
         ":pb_crypto",
         "@pigweed//pw_bytes",
+    ],
+)
+
+# On-device test for AES-CBC and AES-CMAC
+load("//rules:particle_test.bzl", "particle_cc_test")
+
+particle_cc_test(
+    name = "pb_crypto_device_test",
+    srcs = ["pb_crypto_device_test.cc"],
+    platform = "@particle_bazel//platforms/p2:particle_p2",
+    deps = [
+        ":pb_crypto",
+        "@pigweed//pw_bytes",
+        "@pigweed//pw_log",
     ],
 )

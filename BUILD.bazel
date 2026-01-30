@@ -201,9 +201,8 @@ cc_library(
         "third_party/device-os/third_party/mbedtls/mbedtls/library/cipher_wrap.c",
         # CMAC implementation
         "third_party/device-os/third_party/mbedtls/mbedtls/library/cmac.c",
-        # Platform utilities
+        # Platform utilities (not platform.c - that conflicts with Device OS)
         "third_party/device-os/third_party/mbedtls/mbedtls/library/platform_util.c",
-        "third_party/device-os/third_party/mbedtls/mbedtls/library/platform.c",
     ],
     hdrs = ["mbedtls_config.h"],
     copts = DEVICE_OS_COPTS + [
