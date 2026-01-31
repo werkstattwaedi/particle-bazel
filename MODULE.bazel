@@ -44,7 +44,8 @@ npm.npm_translate_lock(
     name = "npm_particle_cli",
     pnpm_lock = "//tools:pnpm-lock.yaml",
     bins = {
-        "particle-cli": ["particle=./dist/cli/index.js"],
+        # Note: package.json uses ./src/index.js (plain JS, not compiled TS)
+        "particle-cli": ["particle=./src/index.js"],
     },
 )
 use_repo(npm, "npm_particle_cli")

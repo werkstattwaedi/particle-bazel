@@ -4,13 +4,15 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+packageExtensionsChecksum: sha256-fLkpHpoQ1GotD9Oj00dPMaML9CSN7EMipUkkPaLcXsM=
+
 importers:
 
   .:
     devDependencies:
       particle-cli:
-        specifier: ^3.0.0
-        version: 3.45.1
+        specifier: 3.43.1
+        version: 3.43.1
 
 packages:
 
@@ -1207,9 +1209,9 @@ packages:
     resolution: {integrity: sha512-7Yg5D+aOquB/tYShgeHVeOGp1jDCUHoZemEuSo7TdeRjXflg9Pa05O4QNenwCF8+7n6q1XYlxj6pldT/i+uscA==}
     engines: {node: '>=16.x', npm: '>=8.x'}
 
-  particle-cli@3.45.1:
-    resolution: {integrity: sha512-WCEMOpSgzFcqOBZOTECXNia2D1wt6N8Y2n/3pUAnIF3l8wso2YDCw80jcIEK1bbgva1DCF7fHuP9yfmlXr6SSw==}
-    engines: {node: '>=22', npm: '>=10'}
+  particle-cli@3.43.1:
+    resolution: {integrity: sha512-DbEG2MsZ++X1R87gKq00/urgnZDy4J0ygjesNQwfuMXGs4J9BzsA82BI8KsojncBCi8iTMwQTVOkmvcWFf1PoQ==}
+    engines: {node: '>=16', npm: '>=6'}
     hasBin: true
 
   particle-commands@1.0.5:
@@ -2977,7 +2979,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  particle-cli@3.45.1:
+  particle-cli@3.43.1:
     dependencies:
       '@particle/device-constants': 4.1.0
       '@particle/softap-setup': 4.1.2
@@ -3003,6 +3005,7 @@ snapshots:
       particle-commands: 1.0.5
       particle-library-manager: 1.0.6
       particle-usb: 4.0.2(@particle/device-constants@4.1.0)
+      properties-parser: 0.3.1
       request: 2.88.2
       safe-buffer: 5.2.1
       semver: 7.7.3
@@ -3651,7 +3654,7 @@ snapshots:
     dependencies:
       assert-plus: 1.0.0
       core-util-is: 1.0.2
-      extsprintf: 1.3.0
+      extsprintf: 1.4.1
 
   verror@1.10.1:
     dependencies:

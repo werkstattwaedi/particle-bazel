@@ -3,9 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "devDependencies": {
-    "particle-cli": "^3.0.0"
+    "particle-cli": "3.43.1"
   },
   "pnpm": {
-    "onlyBuiltDependencies": []
+    "onlyBuiltDependencies": [],
+    "packageExtensions": {
+      "particle-cli": {
+        "dependencies": {
+          "properties-parser": "^0.3.1",
+          "execa": "^5.1.1"
+        }
+      }
+    }
   }
 }

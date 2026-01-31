@@ -106,17 +106,30 @@ class ParticleCli:
         # 2. Try Bazel runfiles (hermetic npm package)
         runfiles = runfiles_dir or os.environ.get("RUNFILES_DIR")
         if runfiles:
-            # Path within npm_translate_lock output
-            hermetic_path = os.path.join(
-                runfiles,
-                "npm_particle_cli",
-                "node_modules",
-                ".bin",
-                "particle",
-            )
-            if os.path.isfile(hermetic_path):
-                return hermetic_path
-            _LOG.debug("Hermetic particle-cli not found at: %s", hermetic_path)
+            # Try multiple possible locations depending on module context
+            candidate_paths = [
+                # When running from within particle_bazel module
+                os.path.join(
+                    runfiles,
+                    "npm_particle_cli",
+                    "node_modules",
+                    ".bin",
+                    "particle",
+                ),
+                # When running from main module (particle_bazel as dependency)
+                os.path.join(
+                    runfiles,
+                    "particle_bazel+",
+                    "tools",
+                    "node_modules",
+                    ".bin",
+                    "particle",
+                ),
+            ]
+            for hermetic_path in candidate_paths:
+                if os.path.isfile(hermetic_path):
+                    return hermetic_path
+                _LOG.debug("particle-cli not found at: %s", hermetic_path)
 
         # 3. Fall back to system PATH
         system_path = shutil.which("particle")
@@ -157,12 +170,21 @@ class ParticleCli:
         cmd = [self._particle_path] + args
         _LOG.info("Running: %s", " ".join(cmd))
 
+        # Ensure HOME is set for particle-cli's settings.js
+        # Without HOME, particle-cli tries to create .particle in its package dir
+        env = os.environ.copy()
+        if "HOME" not in env:
+            import tempfile
+
+            env["HOME"] = tempfile.gettempdir()
+
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=capture_output,
                 text=True,
                 timeout=timeout,
+                env=env,
             )
             cli_result = CliResult(
                 stdout=result.stdout or "",
