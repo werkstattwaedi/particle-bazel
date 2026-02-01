@@ -9,6 +9,7 @@ a P2 device connected via USB.
 
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -17,14 +18,45 @@ from typing import Iterable, Optional
 import serial
 from pw_hdlc import rpc as hdlc_rpc
 from pw_log.log_decoder import timestamp_parser_ms_since_boot
+from pw_log.proto import log_pb2
 from pw_stream import stream_readers
-from pw_system.device import Device as PwSystemDevice
+from pw_system.device import Device as PwSystemDevice, DEFAULT_DEVICE_LOGGER
 from pw_tokenizer import detokenize
 
 from tools.usb.flash import ParticleFlasher, FlashError
 from tools.usb.serial_port import wait_for_serial_port
 
 _LOG = logging.getLogger(__name__)
+
+
+def _resolve_runfiles_path(path: Path) -> Path:
+    """Resolve a path relative to bazel runfiles if needed.
+
+    Args:
+        path: Path that may be relative to runfiles root.
+
+    Returns:
+        Resolved absolute path.
+    """
+    if path.is_absolute():
+        return path
+
+    # Check RUNFILES_DIR environment variable (set by bazel)
+    runfiles_dir = os.environ.get("RUNFILES_DIR")
+    if runfiles_dir:
+        # Bazel runfiles structure: $RUNFILES_DIR/_main/<path>
+        resolved = Path(runfiles_dir) / "_main" / path
+        if resolved.exists():
+            return resolved
+
+    # Fall back to checking relative to CWD
+    if path.exists():
+        return path.resolve()
+
+    return path
+
+# Logger used by PwSystemDevice for device log messages
+_DEVICE_LOG = DEFAULT_DEVICE_LOGGER
 
 
 class P2DeviceFixture:
@@ -63,6 +95,7 @@ class P2DeviceFixture:
         serial_number: Optional[str] = None,
         baudrate: int = 115200,
         rpc_timeout: float = 5.0,
+        show_device_logs: bool = True,
     ) -> None:
         """Initialize the P2 device fixture.
 
@@ -77,6 +110,8 @@ class P2DeviceFixture:
             serial_number: Optional device serial number for selection.
             baudrate: Serial baud rate.
             rpc_timeout: Default RPC call timeout in seconds.
+            show_device_logs: If True, display detokenized device logs to stderr.
+                             Useful for debugging crashes and firmware issues.
         """
         self._firmware_bin = Path(firmware_bin)
         self._firmware_elf = Path(firmware_elf) if firmware_elf else None
@@ -87,12 +122,14 @@ class P2DeviceFixture:
         self._serial_number = serial_number
         self._baudrate = baudrate
         self._rpc_timeout = rpc_timeout
+        self._show_device_logs = show_device_logs
 
         self._device: Optional[PwSystemDevice] = None
         self._serial: Optional[serial.Serial] = None
         self._reader: Optional[stream_readers.SelectableReader] = None
         self._port: Optional[str] = None
         self._detokenizer: Optional[detokenize.Detokenizer] = None
+        self._device_log_handler: Optional[logging.Handler] = None
 
     async def start(self) -> None:
         """Flash firmware and start RPC communication.
@@ -104,9 +141,27 @@ class P2DeviceFixture:
         if self._device is not None:
             raise RuntimeError("Device fixture already started")
 
+        # Configure device log handler if enabled
+        if self._show_device_logs:
+            self._device_log_handler = logging.StreamHandler(sys.stderr)
+            self._device_log_handler.setLevel(logging.DEBUG)
+            # Format to make device logs visually distinct
+            formatter = logging.Formatter(
+                "\033[36m[P2]\033[0m %(message)s"  # Cyan prefix
+            )
+            self._device_log_handler.setFormatter(formatter)
+            _DEVICE_LOG.addHandler(self._device_log_handler)
+            _LOG.info("Device log output enabled")
+
+        # Resolve firmware paths (may be relative to bazel runfiles)
+        firmware_bin = _resolve_runfiles_path(self._firmware_bin)
+        _LOG.info("Resolved firmware binary: %s", firmware_bin)
+        if not firmware_bin.exists():
+            raise RuntimeError(f"Firmware binary not found: {firmware_bin}")
+
         # Flash firmware (synchronous, run in thread pool)
-        _LOG.info("Flashing firmware: %s", self._firmware_bin)
-        await asyncio.to_thread(self._flash_firmware)
+        _LOG.info("Flashing firmware: %s", firmware_bin)
+        await asyncio.to_thread(self._flash_firmware, firmware_bin)
 
         # Wait for device to reboot and appear
         _LOG.info("Waiting for device to appear...")
@@ -122,13 +177,19 @@ class P2DeviceFixture:
         _LOG.info("Device found at %s", self._port)
 
         # Set up detokenizer if ELF provided
-        if self._firmware_elf and self._firmware_elf.exists():
-            _LOG.info("Loading token database from %s", self._firmware_elf)
-            # Use #.* domain pattern to match all token domains
-            self._detokenizer = detokenize.AutoUpdatingDetokenizer(
-                str(self._firmware_elf) + "#.*"
-            )
-            self._detokenizer.show_errors = True
+        if self._firmware_elf:
+            firmware_elf = _resolve_runfiles_path(self._firmware_elf)
+            _LOG.info("Resolved firmware ELF: %s", firmware_elf)
+            if firmware_elf.exists():
+                _LOG.info("Loading token database from %s", firmware_elf)
+                # Use #.* domain pattern to match all token domains
+                self._detokenizer = detokenize.AutoUpdatingDetokenizer(
+                    str(firmware_elf) + "#.*"
+                )
+                self._detokenizer.show_errors = True
+            else:
+                _LOG.warning("Firmware ELF not found: %s - logs will show raw tokens", firmware_elf)
+                self._detokenizer = None
         else:
             _LOG.warning("No firmware ELF provided - logs will show raw tokens")
             self._detokenizer = None
@@ -142,20 +203,18 @@ class P2DeviceFixture:
         )
         self._reader = stream_readers.SelectableReader(self._serial, 8192)
 
-        # Create Device with HDLC encoding
-        # Note: use_rpc_logging=False because RPC logging requires the pw.log
-        # proto to be in proto_library. Log messages from the device will still
-        # appear in HDLC frames but won't be processed by the log RPC handler.
-        # TODO(b/xxx): Add pw.log proto to enable full log capture.
+        # Create Device with HDLC encoding and RPC logging
+        # Include log_pb2 proto to enable pw_system log streaming
+        proto_library = list(self._proto_paths) + [log_pb2]
         self._device = PwSystemDevice(
             channel_id=self._channel_id,
             reader=self._reader,
             write=self._serial.write,
-            proto_library=self._proto_paths,
+            proto_library=proto_library,
             detokenizer=self._detokenizer,
             timestamp_decoder=timestamp_parser_ms_since_boot,
             rpc_timeout_s=self._rpc_timeout,
-            use_rpc_logging=False,
+            use_rpc_logging=self._show_device_logs,  # Enable RPC log streaming
             use_hdlc_encoding=True,
         )
 
@@ -167,11 +226,11 @@ class P2DeviceFixture:
 
         _LOG.info("P2 device fixture started")
 
-    def _flash_firmware(self) -> None:
+    def _flash_firmware(self, firmware_path: Path) -> None:
         """Flash firmware to the device (runs in thread pool)."""
         flasher = ParticleFlasher()
         flasher.flash_local(
-            str(self._firmware_bin),
+            str(firmware_path),
             wait_for_device=True,
             device_timeout=self._device_timeout,
             flash_timeout=self._flash_timeout,
@@ -190,6 +249,11 @@ class P2DeviceFixture:
         if self._serial:
             self._serial.close()
             self._serial = None
+
+        # Remove device log handler to avoid duplicates on restart
+        if self._device_log_handler:
+            _DEVICE_LOG.removeHandler(self._device_log_handler)
+            self._device_log_handler = None
 
         self._port = None
         _LOG.info("P2 device fixture stopped")
