@@ -85,9 +85,9 @@ void (*ParticleSpiInitiator::GetDmaCallback(Interface interface))() {
 }
 
 ParticleSpiInitiator::ParticleSpiInitiator(
-    Interface interface, uint32_t clock_hz
+    Interface interface, uint32_t clock_hz, SpiFlags flags
 )
-    : interface_(interface), clock_hz_(clock_hz) {
+    : interface_(interface), clock_hz_(clock_hz), flags_(flags) {
   const size_t index = InterfaceIndex(interface_);
   PW_CHECK(
       active_instances_[index] == nullptr,
@@ -110,8 +110,24 @@ pw::Status ParticleSpiInitiator::DoConfigure(const pw::spi::Config& config) {
   // Initialize SPI if not already done
   if (!initialized_) {
     hal_spi_init(hal_interface);
+
+    // Convert SpiFlags to HAL flags
+    uint32_t hal_flags = 0;
+    if (flags_ & SpiFlags::kMosiOnly) {
+      hal_flags |= HAL_SPI_CONFIG_FLAG_MOSI_ONLY;
+    }
+
     // Begin in master mode with no default CS pin (we manage CS externally)
-    hal_spi_begin_ext(hal_interface, SPI_MODE_MASTER, SPI_DEFAULT_SS, nullptr);
+    if (hal_flags != 0) {
+      hal_spi_config_t spi_config = {};
+      spi_config.size = sizeof(spi_config);
+      spi_config.version = HAL_SPI_CONFIG_VERSION;
+      spi_config.flags = hal_flags;
+      hal_spi_begin_ext(
+          hal_interface, SPI_MODE_MASTER, SPI_DEFAULT_SS, &spi_config);
+    } else {
+      hal_spi_begin_ext(hal_interface, SPI_MODE_MASTER, SPI_DEFAULT_SS, nullptr);
+    }
     initialized_ = true;
   }
 

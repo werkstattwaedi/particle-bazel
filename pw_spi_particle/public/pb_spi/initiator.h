@@ -12,6 +12,25 @@
 
 namespace pb {
 
+/// Configuration flags for SPI initiator (abstraction over HAL flags).
+enum class SpiFlags : uint32_t {
+  kNone = 0,
+  /// Use only MOSI pin, leaving MISO and SCK available for other uses.
+  /// Required when sharing SPI bus pins with GPIO functions.
+  kMosiOnly = 1 << 0,
+};
+
+/// Enable bitwise OR for SpiFlags.
+constexpr SpiFlags operator|(SpiFlags a, SpiFlags b) {
+  return static_cast<SpiFlags>(static_cast<uint32_t>(a) |
+                               static_cast<uint32_t>(b));
+}
+
+/// Enable bitwise AND check for SpiFlags.
+constexpr bool operator&(SpiFlags a, SpiFlags b) {
+  return (static_cast<uint32_t>(a) & static_cast<uint32_t>(b)) != 0;
+}
+
 /// Pigweed SPI Initiator backend for Particle using HAL SPI API.
 /// Wraps hal_spi_* functions from spi_hal.h.
 ///
@@ -30,7 +49,9 @@ class ParticleSpiInitiator : public pw::spi::Initiator {
   /// @param interface The SPI interface to use (SPI, SPI1, or SPI2)
   /// @param clock_hz Target clock frequency in Hz (will be rounded down to
   ///                 nearest available divider)
-  explicit ParticleSpiInitiator(Interface interface, uint32_t clock_hz);
+  /// @param flags Optional configuration flags (e.g., SpiFlags::kMosiOnly)
+  explicit ParticleSpiInitiator(Interface interface, uint32_t clock_hz,
+                                SpiFlags flags = SpiFlags::kNone);
 
   ~ParticleSpiInitiator() override;
 
@@ -60,6 +81,7 @@ class ParticleSpiInitiator : public pw::spi::Initiator {
 
   Interface interface_;
   uint32_t clock_hz_;
+  SpiFlags flags_;
   pw::sync::BinarySemaphore dma_complete_;
   bool initialized_ = false;
 };
