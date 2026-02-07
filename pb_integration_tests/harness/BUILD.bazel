@@ -23,6 +23,7 @@ py_library(
         "//tools:particle_usb",
         "@particle_pip//pyserial",
         "@pigweed//pw_hdlc/py:pw_hdlc",
+        "@pigweed//pw_log:log_proto_py_pb2",
         "@pigweed//pw_log/py:pw_log",
         "@pigweed//pw_protobuf_compiler/py:pw_protobuf_compiler",
         "@pigweed//pw_rpc/py:pw_rpc",

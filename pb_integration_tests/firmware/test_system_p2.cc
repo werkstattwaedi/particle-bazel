@@ -18,6 +18,7 @@
 // Particle HAL headers
 #include "pb_log/log_bridge.h"
 #include "delay_hal.h"
+#include "system_cloud.h"
 #include "usb_hal.h"
 
 namespace pb::test {
@@ -57,18 +58,37 @@ void TestSystemInit(pw::Function<void()> init_callback) {
       pw::system::GetReader(),
       pw::thread::particle::Options()
           .set_name("rx_thread")
-          .set_stack_size(4096),
+          .set_stack_size(8192),
       multibuf_alloc,
       pw::system::GetWriter(),
       pw::thread::particle::Options()
           .set_name("tx_thread")
-          .set_stack_size(4096),
+          .set_stack_size(8192),
       multibuf_alloc);
 
   PW_LOG_INFO("=== Integration Test System Ready ===");
 
   pw::system::StartAndClobberTheStack(channel->channel());
   PW_UNREACHABLE;
+}
+
+bool WaitForCloudConnection(uint32_t timeout_ms) {
+  PW_LOG_INFO("Waiting for cloud connection...");
+  uint32_t elapsed_ms = 0;
+  constexpr uint32_t kPollIntervalMs = 100;
+
+  while (!spark_cloud_flag_connected()) {
+    if (timeout_ms > 0 && elapsed_ms >= timeout_ms) {
+      PW_LOG_WARN("Cloud connection timeout after %u ms",
+                  static_cast<unsigned>(elapsed_ms));
+      return false;
+    }
+    HAL_Delay_Milliseconds(kPollIntervalMs);
+    elapsed_ms += kPollIntervalMs;
+  }
+
+  PW_LOG_INFO("Cloud connected after %u ms", static_cast<unsigned>(elapsed_ms));
+  return true;
 }
 
 }  // namespace pb::test

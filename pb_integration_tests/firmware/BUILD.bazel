@@ -34,6 +34,8 @@ cc_library(
         # Log backend for tokenized logging - must be in alwayslink library
         # to ensure pw_log_tokenized_HandleLog is linked
         "@pigweed//pw_system:log_backend",
+        # Linker script to preserve tokenized strings in ELF for detokenization
+        "@pigweed//pw_tokenizer:linker_script",
     ],
     alwayslink = True,
     target_compatible_with = ["@pigweed//pw_build/constraints/arm:cortex-m33"],

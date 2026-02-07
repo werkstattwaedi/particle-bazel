@@ -10,6 +10,7 @@ a P2 device connected via USB.
 import asyncio
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -57,6 +58,80 @@ def _resolve_runfiles_path(path: Path) -> Path:
 
 # Logger used by PwSystemDevice for device log messages
 _DEVICE_LOG = DEFAULT_DEVICE_LOGGER
+
+
+class _DeviceLogFormatter(logging.Formatter):
+    """Custom formatter for device logs that cleans up the pw_system format.
+
+    Input format from pw_system:
+      [RpcDevice] module 00:00:04.222 Message file.cc:123
+
+    Output format:
+      [P2] 00:00:04.222 module | Message
+                               | file.cc:123
+    """
+
+    # ANSI color codes
+    CYAN = "\033[36m"
+    YELLOW = "\033[33m"
+    RED = "\033[31m"
+    BOLD_RED = "\033[1;31m"
+    DIM = "\033[2m"
+    RESET = "\033[0m"
+
+    # Level colors
+    LEVEL_COLORS = {
+        logging.DEBUG: DIM,
+        logging.INFO: "",
+        logging.WARNING: YELLOW,
+        logging.ERROR: RED,
+        logging.CRITICAL: BOLD_RED,
+    }
+
+    def format(self, record: logging.LogRecord) -> str:
+        msg = record.getMessage()
+        level_color = self.LEVEL_COLORS.get(record.levelno, "")
+
+        # Parse the pw_system log format: [RpcDevice] module timestamp message file:line
+        # Example: [RpcDevice]  00:00:04.222 Message file.cc:123
+        # Example: [RpcDevice] pw_system 00:00:04.224 Message file.cc:114
+
+        # Remove [RpcDevice] prefix if present
+        if msg.startswith("[RpcDevice]"):
+            msg = msg[11:].lstrip()
+
+        # Try to extract timestamp (format: HH:MM:SS.mmm)
+        match = re.match(r'^(\S*)\s*(\d{2}:\d{2}:\d{2}\.\d{3})\s+(.+)$', msg)
+        if match:
+            module = match.group(1)
+            timestamp = match.group(2)
+            rest = match.group(3)
+
+            # Check if rest ends with file:line pattern
+            file_match = re.search(r'\s+([\w/._+-]+:\d+)$', rest)
+            if file_match:
+                message = rest[:file_match.start()]
+                source = file_match.group(1)
+                # Shorten external paths
+                source = source.replace("external/particle_bazel+/", "")
+                source = source.replace("external/pigweed+/", "pw/")
+            else:
+                message = rest
+                source = None
+
+            # Format: [P2] timestamp module | message
+            prefix = f"{self.CYAN}[P2]{self.RESET}"
+            ts = f"{self.DIM}{timestamp}{self.RESET}"
+            mod = f"{self.DIM}{module:12}{self.RESET}" if module else " " * 12
+
+            if source:
+                return f"{prefix} {ts} {mod} {level_color}{message}{self.RESET}\n{' ' * 32}{self.DIM}{source}{self.RESET}"
+            else:
+                return f"{prefix} {ts} {mod} {level_color}{message}{self.RESET}"
+
+        # Fallback: just prefix with [P2]
+        return f"{self.CYAN}[P2]{self.RESET} {level_color}{msg}{self.RESET}"
+
 
 
 class P2DeviceFixture:
@@ -145,12 +220,10 @@ class P2DeviceFixture:
         if self._show_device_logs:
             self._device_log_handler = logging.StreamHandler(sys.stderr)
             self._device_log_handler.setLevel(logging.DEBUG)
-            # Format to make device logs visually distinct
-            formatter = logging.Formatter(
-                "\033[36m[P2]\033[0m %(message)s"  # Cyan prefix
-            )
-            self._device_log_handler.setFormatter(formatter)
+            self._device_log_handler.setFormatter(_DeviceLogFormatter())
             _DEVICE_LOG.addHandler(self._device_log_handler)
+            # Prevent propagation to root logger to avoid duplicate output
+            _DEVICE_LOG.propagate = False
             _LOG.info("Device log output enabled")
 
         # Resolve firmware paths (may be relative to bazel runfiles)
@@ -250,9 +323,10 @@ class P2DeviceFixture:
             self._serial.close()
             self._serial = None
 
-        # Remove device log handler to avoid duplicates on restart
+        # Remove device log handler and restore propagation
         if self._device_log_handler:
             _DEVICE_LOG.removeHandler(self._device_log_handler)
+            _DEVICE_LOG.propagate = True  # Restore default propagation
             self._device_log_handler = None
 
         self._port = None

@@ -3,24 +3,24 @@
 
 #pragma once
 
-/// @file mock_tcp_stream.h
-/// @brief Mock TCP stream for host testing.
+/// @file mock_tcp_socket.h
+/// @brief Mock TCP socket for host testing.
 
 #include <deque>
 #include <vector>
 
-#include "pb_socket/tcp_stream.h"
+#include "pb_socket/tcp_socket.h"
 
 namespace pb::socket {
 
-/// Mock TCP stream for testing.
+/// Mock TCP socket for testing.
 ///
-/// Provides a fake TCP stream that can be pre-loaded with data to read
+/// Provides a fake TCP socket that can be pre-loaded with data to read
 /// and captures written data for verification.
 ///
 /// Usage:
 /// @code
-///   MockTcpStream mock;
+///   MockTcpSocket mock;
 ///   mock.set_connected(true);
 ///   mock.EnqueueReadData(pw::bytes::Array<0x7E, 0x00>());
 ///
@@ -31,11 +31,11 @@ namespace pb::socket {
 ///   // Verify written data
 ///   auto written = mock.PopWrittenData();
 /// @endcode
-class MockTcpStream : public TcpStream {
+class MockTcpSocket : public TcpSocket {
  public:
-  MockTcpStream() = default;
+  MockTcpSocket() = default;
 
-  // TcpStream interface
+  // TcpSocket interface
   pw::Status Connect() override {
     if (connect_should_fail_) {
       state_ = TcpState::kError;
@@ -52,6 +52,36 @@ class MockTcpStream : public TcpStream {
   TcpState state() const override { return state_; }
 
   int last_error() const override { return last_error_; }
+
+  pw::StatusWithSize Read(pw::ByteSpan dest) override {
+    if (state_ != TcpState::kConnected) {
+      return pw::StatusWithSize::FailedPrecondition();
+    }
+
+    if (read_queue_.empty()) {
+      return pw::StatusWithSize(0);  // No data available
+    }
+
+    auto& front = read_queue_.front();
+    size_t to_copy = std::min(dest.size(), front.size());
+    std::copy(front.begin(), front.begin() + to_copy, dest.begin());
+    front.erase(front.begin(), front.begin() + to_copy);
+
+    if (front.empty()) {
+      read_queue_.pop_front();
+    }
+
+    return pw::StatusWithSize(to_copy);
+  }
+
+  pw::Status Write(pw::ConstByteSpan data) override {
+    if (state_ != TcpState::kConnected) {
+      return pw::Status::FailedPrecondition();
+    }
+
+    written_data_.insert(written_data_.end(), data.begin(), data.end());
+    return pw::OkStatus();
+  }
 
   // Mock configuration
   void set_connected(bool connected) {
@@ -85,36 +115,6 @@ class MockTcpStream : public TcpStream {
   }
 
  private:
-  pw::StatusWithSize DoRead(pw::ByteSpan dest) override {
-    if (state_ != TcpState::kConnected) {
-      return pw::StatusWithSize::FailedPrecondition();
-    }
-
-    if (read_queue_.empty()) {
-      return pw::StatusWithSize(0);  // No data available
-    }
-
-    auto& front = read_queue_.front();
-    size_t to_copy = std::min(dest.size(), front.size());
-    std::copy(front.begin(), front.begin() + to_copy, dest.begin());
-    front.erase(front.begin(), front.begin() + to_copy);
-
-    if (front.empty()) {
-      read_queue_.pop_front();
-    }
-
-    return pw::StatusWithSize(to_copy);
-  }
-
-  pw::Status DoWrite(pw::ConstByteSpan data) override {
-    if (state_ != TcpState::kConnected) {
-      return pw::Status::FailedPrecondition();
-    }
-
-    written_data_.insert(written_data_.end(), data.begin(), data.end());
-    return pw::OkStatus();
-  }
-
   TcpState state_ = TcpState::kDisconnected;
   int last_error_ = 0;
   bool connect_should_fail_ = false;
